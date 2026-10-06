@@ -13,3 +13,6 @@ ${CXX:-c++} -std=c++11 -Wall -Wextra -Werror -IAutoFeeder tests/test_control.cpp
 
 ${CXX:-c++} -std=c++11 -Wall -Wextra -Werror -Itests/stubs -IAutoFeeder tests/test_firmware.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/firmware"
 "$test_build/firmware"
+
+${CXX:-c++} -std=c++11 -Wall -Wextra -Werror -DENABLE_PLATE_JIGGLE=1 -Itests/stubs -IAutoFeeder tests/test_firmware.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/jiggle"
+"$test_build/jiggle"

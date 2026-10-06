@@ -13,6 +13,7 @@ namespace DCMotor {
    * @brief Sets the speed of the motor.
    */
   void set_speed(uint8_t speed);
+  void stop(bool brake=false);
 
   /**
    * @brief Sets the direction of the motor.

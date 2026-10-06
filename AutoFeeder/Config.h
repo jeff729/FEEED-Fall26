@@ -68,6 +68,12 @@ constexpr uint8_t JIGGLE_PWM=85;
 #ifndef ENABLE_UART_TELEMETRY
 #define ENABLE_UART_TELEMETRY 0
 #endif
+#ifndef RUN_PLATE_JIGGLE_ONCE_AT_HOME
+#define RUN_PLATE_JIGGLE_ONCE_AT_HOME 0
+#endif
+#if RUN_PLATE_JIGGLE_ONCE_AT_HOME && !ENABLE_PLATE_JIGGLE
+#error "The lab boot jiggle requires ENABLE_PLATE_JIGGLE=1."
+#endif
 // D1 is wired to mode selection. Compilation must prevent unsafe UART use.
 #if ENABLE_UART_TELEMETRY
 #error "UART TX conflicts with the existing D1 mode switch; keep UART disabled."

@@ -29,10 +29,15 @@ bool loaded_valid[NUM_PROFILES]={};
 CalibrationPoint calibration_point=CalibrationPoint::ENTRY;
 Profile profile,calibration_profile;
 uint8_t calibration_slot=0;
+#if ENABLE_PLATE_JIGGLE
+uint8_t jiggle_phase=0;
+uint32_t jiggle_timestamp=0;
+bool lab_jiggle_done=false;
+#endif
 
 void stop_plate() {
-  DCMotor::set_speed(0);plate_pwm=0;
-  DCMotor::set_brake(USE_PLATE_BRAKE);
+  DCMotor::stop(USE_PLATE_BRAKE);plate_pwm=0;
+  DCMotor::set_direction(false);
 }
 void command_plate(uint8_t pwm) {
   if (state==State::FAULT || state==State::LOW_POWER) { stop_plate();return; }
@@ -264,13 +269,36 @@ void update_led(uint32_t now) {
 void rotate_tick(uint32_t now,bool automatic) {
   uint32_t elapsed=uint32_t(now-entered);
   // Immediate raw release stop, even while debounced input is catching up.
-  if (!automatic && digitalRead(INPUT_PIN)==HIGH) {enter(State::SETTLE);return;}
+  if (!automatic && (digitalRead(INPUT_PIN)==HIGH || digitalRead(MODE_SELECT_PIN)==LOW)) {enter(State::SETTLE);return;}
   if (automatic && elapsed>=AUTO_ROTATE_DURATION) {enter(State::SETTLE);return;}
   uint32_t ramp=elapsed<PLATE_RAMP_TIME?elapsed:PLATE_RAMP_TIME;
-  uint8_t pwm=uint32_t(PLATE_PWM)*ramp/PLATE_RAMP_TIME;
+  uint8_t pwm=PLATE_RAMP_TIME ? uint32_t(PLATE_PWM)*ramp/PLATE_RAMP_TIME : PLATE_PWM;
   if (pwm<PLATE_START_PWM)pwm=PLATE_START_PWM;
   command_plate(pwm);
 }
+#if ENABLE_PLATE_JIGGLE
+void jiggle_tick(uint32_t now) {
+  uint32_t elapsed=uint32_t(now-jiggle_timestamp);
+  switch(jiggle_phase) {
+    case 0:
+      if(elapsed>=JIGGLE_FORWARD_MS) {stop_plate();jiggle_phase=1;jiggle_timestamp=now;}
+      else command_plate(JIGGLE_PWM);
+      break;
+    case 1:
+      if(elapsed>=JIGGLE_PAUSE_MS) {
+        DCMotor::set_direction(true);jiggle_phase=2;jiggle_timestamp=now;command_plate(JIGGLE_PWM);
+      }
+      break;
+    case 2:
+      if(elapsed>=JIGGLE_REVERSE_MS) {stop_plate();jiggle_phase=3;jiggle_timestamp=now;}
+      else command_plate(JIGGLE_PWM);
+      break;
+    default:
+      if(elapsed>=JIGGLE_PAUSE_MS)enter(State::WAIT);
+      break;
+  }
+}
+#endif
 } // namespace
 
 void feeder_setup() {
@@ -288,6 +316,9 @@ void feeder_setup() {
   joy_button.begin(read_joystick_button(),now);
   mode_switch.begin(digitalRead(MODE_SELECT_PIN)==LOW,now);
   last_safety=last_profile=now;led_pulses=0;manual_long=false;contact.reset();
+#if ENABLE_PLATE_JIGGLE
+  lab_jiggle_done=false;
+#endif
   selected=pot_choice();cycle_profile=selected;clear_fault();
   for(uint8_t i=0;i<NUM_PROFILES;++i) {
     loaded_valid[i]=load_profile(i,profiles[i]);
@@ -318,6 +349,7 @@ void feeder_loop() {
     return;
   }
   bool cancel=main_button.pressed || joy_button.pressed;
+  if(cancel && state==State::JIGGLE) {enter(State::WAIT);return;}
   if (cancel && (state==State::AUTO_ROTATE || state==State::SETTLE || state==State::DESCEND ||
                  state==State::SCOOP || state==State::CONTACT_BACKOFF || state==State::CONTACT_SETTLE || state==State::LIFT)) {
     safe_abort(true);return;
@@ -337,6 +369,9 @@ void feeder_loop() {
       if (move_tick(now))enter(State::WAIT);
       break;
     case State::WAIT:
+#if RUN_PLATE_JIGGLE_ONCE_AT_HOME
+      if(!lab_jiggle_done) {lab_jiggle_done=true;start_plate_jiggle();break;}
+#endif
       if (main_button.pressed) {manual_long=false;wait_main_pending=true;}
       if (joy_button.pressed)wait_joy_pending=true;
       if (wait_main_pending && !mode_switch.down && main_button.long_press(LONG_PRESS_MS,now)) {
@@ -393,7 +428,13 @@ void feeder_loop() {
     case State::CALIBRATE: calibration_tick(now);break;
     case State::LOW_POWER:
     case State::FAULT: stop_plate();break;
-    case State::JIGGLE: stop_plate();enter(State::WAIT);break;
+    case State::JIGGLE:
+#if ENABLE_PLATE_JIGGLE
+      jiggle_tick(now);
+#else
+      stop_plate();enter(State::WAIT);
+#endif
+      break;
   }
 }
 
@@ -401,4 +442,13 @@ DebugSnapshot debug_snapshot() {
   return {state,fault,q1,q2,target_x,target_y,cycle_profile,servo_current,battery_adc,
           plate_pwm,contact.retries,contact.offset};
 }
-bool start_plate_jiggle() { return false; }
+bool start_plate_jiggle() {
+#if ENABLE_PLATE_JIGGLE
+  if(state!=State::WAIT || fault!=Fault::NONE || main_button.down || joy_button.down)return false;
+  if(!safety_tick(uint32_t(millis()),true))return false;
+  enter(State::JIGGLE);jiggle_phase=0;jiggle_timestamp=entered;
+  return true;
+#else
+  return false;
+#endif
+}

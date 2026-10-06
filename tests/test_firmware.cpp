@@ -124,7 +124,19 @@ int main() {
     CHECK(flashes==6); // Rejected profile has distinct six-flash feedback.
 
     boot();CHECK(await(State::WAIT));
+#if ENABLE_PLATE_JIGGLE
+    CHECK(start_plate_jiggle());
+    run(10);CHECK(test_pwm[11]==Config::JIGGLE_PWM && test_output[13]==LOW);
+    run(150);CHECK(test_pwm[11]==0);
+    run(250);CHECK(test_pwm[11]==Config::JIGGLE_PWM && test_output[13]==HIGH);
+    CHECK(await(State::WAIT,2000));CHECK(test_pwm[11]==0 && test_output[13]==LOW);
+    CHECK(start_plate_jiggle());run(10);test_analog[4]=600;run(10);
+    CHECK(debug_snapshot().state==State::LOW_POWER && test_pwm[11]==0);
+    boot();CHECK(await(State::WAIT));CHECK(start_plate_jiggle());run(10);click(2);
+    CHECK(debug_snapshot().state==State::WAIT && test_pwm[11]==0);
+#else
     CHECK(!start_plate_jiggle()); // Disabled in the normal firmware build.
+#endif
   } catch(const std::exception &e) {std::fprintf(stderr,"FAIL exception: %s\n",e.what());++failures;}
   std::printf("firmware integration: %d checks, %d failures\n",checks,failures);
   return failures?1:0;
