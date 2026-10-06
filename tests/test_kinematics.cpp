@@ -39,6 +39,9 @@ int main() {
   CHECK(!load_profile(0, loaded));
   CHECK(!save_profile(p, 0));
   CHECK(!load_profile(4, loaded));
+  EEPROM.drop_writes=true;
+  CHECK(!save_profile(default_profile(3), 0)); // Failed physical EEPROM write.
+  EEPROM.drop_writes=false;
   CHECK(validate_profile(default_profile(0)));
   CHECK(validate_profile(default_profile(3)));
   CHECK(!twoLinkIK(5, 0, 100, 50, true, a, b)); // D < -1.

@@ -3,11 +3,12 @@
 struct FakeEEPROM {
   unsigned char bytes[1024] = {};
   int writes = 0;
+  bool drop_writes = false;
   template<class T> void get(int address, T &value) {
     std::memcpy(&value, bytes + address, sizeof(T));
   }
   template<class T> void put(int address, const T &value) {
-    std::memcpy(bytes + address, &value, sizeof(T));
+    if (!drop_writes) std::memcpy(bytes + address, &value, sizeof(T));
     ++writes;
   }
 };

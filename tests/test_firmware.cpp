@@ -18,6 +18,20 @@ static bool await(State state,uint32_t budget=120000) {
   for(uint32_t i=0;i<budget;i+=10) {if(debug_snapshot().state==state)return true;run(10);}
   return debug_snapshot().state==state;
 }
+static bool joystick_to(float x,float y) {
+  for(uint32_t i=0;i<90000;i+=20) {
+    DebugSnapshot d=debug_snapshot();
+    float dx=x-d.target_x,dy=y-d.target_y;
+    if(std::fabs(dx)<0.35f && std::fabs(dy)<0.35f) {
+      test_analog[2]=test_analog[3]=512;run(40);return true;
+    }
+    test_analog[2]=std::fabs(dx)<0.3f?512:(dx>0?312:712);
+    test_analog[3]=std::fabs(dy)<0.3f?512:(dy>0?712:312);
+    run(20);
+    if(debug_snapshot().state!=State::CALIBRATE)return false;
+  }
+  test_analog[2]=test_analog[3]=512;return false;
+}
 static void boot(bool simple=false,bool valid=true) {
   test_now=0;test_servo_writes=0;
   for(int &v:test_digital)v=HIGH;
@@ -84,6 +98,33 @@ int main() {
     CHECK(debug_snapshot().fault==Fault::CONTACT_LIMIT);
     CHECK(debug_snapshot().retries==3 && debug_snapshot().offset<=3);
     CHECK(test_pwm[11]==0);
+
+    boot();CHECK(await(State::WAIT));
+    test_analog[5]=800;run(200);click(7,1100);
+    CHECK(debug_snapshot().state==State::CALIBRATE);
+    Profile previous_slot3;EEPROM.get(120,previous_slot3);
+    writes_before=EEPROM.writes;
+    test_analog[5]=1000;run(200); // Move knob, but save must remain in slot 2.
+    CHECK(joystick_to(-80,-155));click(7);run(250);
+    CHECK(joystick_to(-76,-175));click(7);run(250);
+    CHECK(joystick_to(0,-177.5f));click(7);run(250);
+    CHECK(joystick_to(76,-180));click(7);run(250);
+    CHECK(joystick_to(80,-155));click(7);
+    CHECK(await(State::WAIT));CHECK(EEPROM.writes==writes_before+1);
+    Profile saved,unchanged;EEPROM.get(80,saved);EEPROM.get(120,unchanged);
+    CHECK(validate_profile(saved));CHECK(std::fabs(saved.entry_x+80)<0.5f);
+    CHECK(std::memcmp(&previous_slot3,&unchanged,sizeof(Profile))==0);
+
+    boot();CHECK(await(State::WAIT));click(7,1100);writes_before=EEPROM.writes;
+    for(int point=0;point<5;++point) {click(7);if(point<4)run(250);}
+    CHECK(debug_snapshot().state==State::CALIBRATE); // Home is not a valid bowl profile.
+    CHECK(EEPROM.writes==writes_before);
+    int flashes=test_output[10]?1:0;bool lit=test_output[10];
+    for(int i=0;i<170;++i) {run(10);bool next=test_output[10];if(next&&!lit)++flashes;lit=next;}
+    CHECK(flashes==6); // Rejected profile has distinct six-flash feedback.
+
+    boot();CHECK(await(State::WAIT));
+    CHECK(!start_plate_jiggle()); // Disabled in the normal firmware build.
   } catch(const std::exception &e) {std::fprintf(stderr,"FAIL exception: %s\n",e.what());++failures;}
   std::printf("firmware integration: %d checks, %d failures\n",checks,failures);
   return failures?1:0;

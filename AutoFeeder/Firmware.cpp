@@ -248,15 +248,16 @@ void update_led(uint32_t now) {
     uint32_t group=count*2*LED_PULSE_MS+LED_GROUP_PAUSE_MS;
     uint32_t phase=uint32_t(now-entered)%group;
     on=phase<count*2*LED_PULSE_MS && (phase/LED_PULSE_MS)%2==0;
-  } else if(state==State::CALIBRATE) {
-    uint8_t count=uint8_t(calibration_point)+1;
-    uint32_t group=count*2*LED_PULSE_MS+LED_GROUP_PAUSE_MS;
-    uint32_t phase=uint32_t(now-entered)%group;
-    on=phase<count*2*LED_PULSE_MS && (phase/LED_PULSE_MS)%2==0;
-  } else if(led_pulses) {
-    uint32_t elapsed=uint32_t(now-led_started);
-    if (elapsed>=led_pulses*2*LED_PULSE_MS)led_pulses=0;
-    else on=(elapsed/LED_PULSE_MS)%2==0;
+  } else if(led_pulses && uint32_t(now-led_started)<led_pulses*2*LED_PULSE_MS) {
+    on=(uint32_t(now-led_started)/LED_PULSE_MS)%2==0;
+  } else {
+    led_pulses=0;
+    if(state==State::CALIBRATE) {
+      uint8_t count=uint8_t(calibration_point)+1;
+      uint32_t group=count*2*LED_PULSE_MS+LED_GROUP_PAUSE_MS;
+      uint32_t phase=uint32_t(now-entered)%group;
+      on=phase<count*2*LED_PULSE_MS && (phase/LED_PULSE_MS)%2==0;
+    }
   }
   digitalWrite(WARNING_LED_PIN,on?HIGH:LOW);
 }

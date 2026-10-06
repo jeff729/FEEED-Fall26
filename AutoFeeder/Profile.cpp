@@ -2,9 +2,11 @@
 #include "kinematics.h"
 #include "Config.h"
 #include <math.h>
+#include <string.h>
 #include <EEPROM.h>
 
 Profile profiles[NUM_PROFILES];
+static_assert(sizeof(Profile)==40,"Keep the inherited EEPROM profile layout");
 static const Profile plate_profile={-80,-155,-76,-175,0,-177.5f,76,-180,80,-155};
 // The inherited (-75,-82.5) entry was inside its own shoulder exclusion
 // circle. These are the coordinates the old loader actually projected to;
@@ -57,7 +59,9 @@ bool save_profile(const Profile &p, uint8_t idx) {
   if (!normalize_profile(candidate)) return false;
   // Same four raw 40-byte AVR structs, same addresses, no migration/header.
   EEPROM.put(sizeof(Profile)*idx,candidate);
-  return true;
+  Profile readback;
+  EEPROM.get(sizeof(Profile)*idx,readback);
+  return memcmp(&candidate,&readback,sizeof(Profile))==0 && validate_profile(readback);
 }
 
 bool load_profile(uint8_t idx, Profile &p) {
