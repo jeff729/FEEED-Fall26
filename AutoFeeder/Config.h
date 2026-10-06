@@ -18,6 +18,8 @@ constexpr float PROFILE_ROUNDOFF_MM=0.05f;
 constexpr float SCOOP_EXIT_X_MM=5.0f, SCOOP_EXIT_Y_MM=20.0f;
 constexpr float RETURN_CLEARANCE_MM=30.0f;
 constexpr float STARTUP_Q1=-2.09f, STARTUP_Q2=2.09f;
+constexpr float HOME_Q1=-3.1415926f, HOME_Q2=2.1817f;
+constexpr float HOME_X_MM=-42.6424f, HOME_Y_MM=-81.9152f;
 
 // SERVO LIMITS (unchanged). q1 [-pi,0], q2 [0,pi].
 constexpr int SERVO_MIN_PW=544, SERVO_MAX_PW=2400, SERVO1_TRIM=0, SERVO2_TRIM=0;
@@ -57,6 +59,7 @@ constexpr bool ROTATE_DURING_CALIBRATION=false;
 
 // FEED WAIT and LED feedback.
 constexpr uint32_t FEED_WAIT_TIME=6500, LED_PULSE_MS=150, LED_GROUP_PAUSE_MS=750;
+constexpr uint32_t LOW_POWER_LED_HALF_MS=500;
 
 // EXPERIMENTAL FEATURES: never in ordinary feeding by default.
 constexpr uint32_t JIGGLE_FORWARD_MS=150, JIGGLE_REVERSE_MS=150, JIGGLE_PAUSE_MS=250;
@@ -67,6 +70,9 @@ constexpr uint8_t JIGGLE_PWM=85;
 #endif
 #ifndef ENABLE_UART_TELEMETRY
 #define ENABLE_UART_TELEMETRY 0
+#endif
+#ifndef ENABLE_DEBUG_PIN_TRACE
+#define ENABLE_DEBUG_PIN_TRACE 0
 #endif
 #ifndef RUN_PLATE_JIGGLE_ONCE_AT_HOME
 #define RUN_PLATE_JIGGLE_ONCE_AT_HOME 0

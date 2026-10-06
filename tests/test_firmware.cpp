@@ -48,6 +48,11 @@ static void boot(bool simple=false,bool valid=true) {
 int main() {
   try {
     boot(); CHECK(await(State::WAIT));CHECK(test_pwm[11]==0);
+#if ENABLE_DEBUG_PIN_TRACE
+    run(10);int trace_pulses=test_output[4]?1:0;bool trace_on=test_output[4];
+    for(int i=0;i<50;++i) {run(10);bool on=test_output[4];if(on&&!trace_on)++trace_pulses;trace_on=on;}
+    CHECK(trace_pulses==4); // WAIT state encodes four scope pulses.
+#endif
     click(2);CHECK(await(State::SCOOP));
     click(2);CHECK(await(State::WAIT)); // Cancel retracts/home; never delivers.
     CHECK(test_pwm[11]==0);CHECK(debug_snapshot().fault==Fault::NONE);
@@ -71,6 +76,8 @@ int main() {
     test_digital[2]=LOW;run(650);CHECK(test_pwm[11]>0);
     test_analog[4]=600;run(10);CHECK(debug_snapshot().state==State::LOW_POWER);
     CHECK(test_pwm[11]==0 && test_output[3]==LOW);
+    run(600);CHECK(test_output[10]==LOW);
+    run(500);CHECK(test_output[10]==HIGH);
     test_analog[4]=800;run(2000);CHECK(debug_snapshot().state==State::LOW_POWER);
 
     boot();CHECK(await(State::WAIT));click(2);CHECK(await(State::SCOOP));
@@ -99,6 +106,26 @@ int main() {
     CHECK(debug_snapshot().retries==3 && debug_snapshot().offset<=3);
     CHECK(test_pwm[11]==0);
 
+    boot();CHECK(await(State::WAIT));click(2);CHECK(await(State::SCOOP));run(5000);
+    test_analog[0]=450;CHECK(await(State::CONTACT_SETTLE));
+    test_analog[0]=100;CHECK(await(State::FEED_WAIT));
+    CHECK(debug_snapshot().retries==1 && debug_snapshot().offset==1);
+    test_digital[1]=LOW;test_analog[5]=950;run(7000);
+    CHECK(debug_snapshot().state==State::FEED_WAIT); // Advanced mode is locked for this cycle.
+    CHECK(debug_snapshot().profile==0); // Pot cannot redirect an active profile.
+    test_analog[4]=600;run(10);
+    CHECK(debug_snapshot().state==State::LOW_POWER && test_pwm[11]==0 && test_output[3]==LOW);
+
+    boot(true);CHECK(await(State::WAIT));click(2);test_digital[1]=HIGH;
+    CHECK(await(State::FEED_WAIT));run(6600);
+    CHECK(await(State::WAIT)); // Auto-return follows the starting mode despite switch change.
+
+    boot();CHECK(await(State::WAIT));test_analog[5]=800;run(200);click(2);
+    CHECK(await(State::FEED_WAIT));click(2);CHECK(await(State::WAIT)); // Built-in plate path.
+
+    boot();test_now=0xfffffff0u;feeder_setup();CHECK(await(State::WAIT));
+    click(2);CHECK(await(State::FEED_WAIT));click(2);CHECK(await(State::WAIT));
+
     boot();CHECK(await(State::WAIT));
     test_analog[5]=800;run(200);click(7,1100);
     CHECK(debug_snapshot().state==State::CALIBRATE);
@@ -114,6 +141,12 @@ int main() {
     Profile saved,unchanged;EEPROM.get(80,saved);EEPROM.get(120,unchanged);
     CHECK(validate_profile(saved));CHECK(std::fabs(saved.entry_x+80)<0.5f);
     CHECK(std::memcmp(&previous_slot3,&unchanged,sizeof(Profile))==0);
+
+    boot();CHECK(await(State::WAIT));test_analog[5]=800;run(200);click(7,1100);
+    CHECK(joystick_to(0,-170));test_analog[5]=1000;run(200);click(7,1100);
+    CHECK(await(State::CANCEL_HOME));
+    CHECK(std::fabs(debug_snapshot().target_y+125)<0.02f); // Locked plate profile clearance, not previous bowl.
+    CHECK(await(State::WAIT));
 
     boot();CHECK(await(State::WAIT));click(7,1100);writes_before=EEPROM.writes;
     for(int point=0;point<5;++point) {click(7);if(point<4)run(250);}

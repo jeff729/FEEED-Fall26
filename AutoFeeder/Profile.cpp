@@ -12,6 +12,7 @@ static const Profile plate_profile={-80,-155,-76,-175,0,-177.5f,76,-180,80,-155}
 // circle. These are the coordinates the old loader actually projected to;
 // retain that effective baseline instead of inventing a new bowl geometry.
 static const Profile bowl_profile={-70.999260f,-95.702440f,-70,-175,0,-175,70,-175,60,-90};
+static const Profile legacy_bowl_profile={-75,-82.5f,-70,-175,0,-175,70,-175,60,-90};
 
 const Profile &default_profile(uint8_t idx) {
   return idx < NUM_PROFILES/2 ? bowl_profile : plate_profile;
@@ -27,6 +28,10 @@ static bool validate_point(float &x, float &y) {
 
 bool normalize_profile(Profile &p) {
   Profile candidate=p;
+  // Recognize only the complete, exact inherited built-in bowl template.
+  // Its known loader projection is compatible; arbitrary unreachable user
+  // profiles never get this large-correction exception.
+  if(memcmp(&candidate,&legacy_bowl_profile,sizeof(Profile))==0)candidate=bowl_profile;
   if (!validate_point(candidate.entry_x,candidate.entry_y) ||
       !validate_point(candidate.bottom_x,candidate.bottom_y) ||
       !validate_point(candidate.middle_x,candidate.middle_y) ||
@@ -74,13 +79,16 @@ bool load_profile(uint8_t idx, Profile &p) {
 }
 
 bool get_profile_step(const Profile &p, int step, float &x, float &y) {
+  float nx,ny;
   switch(step) {
-    case 0: x=p.entry_x; y=p.entry_y; break;
-    case 1: x=p.bottom_x; y=p.bottom_y; break;
-    case 2: x=p.middle_x; y=p.middle_y; break;
-    case 3: x=p.front_x; y=p.front_y; break;
-    case 4: x=p.end_x+Config::SCOOP_EXIT_X_MM; y=p.end_y+Config::SCOOP_EXIT_Y_MM; break;
+    case 0: nx=p.entry_x; ny=p.entry_y; break;
+    case 1: nx=p.bottom_x; ny=p.bottom_y; break;
+    case 2: nx=p.middle_x; ny=p.middle_y; break;
+    case 3: nx=p.front_x; ny=p.front_y; break;
+    case 4: nx=p.end_x+Config::SCOOP_EXIT_X_MM; ny=p.end_y+Config::SCOOP_EXIT_Y_MM; break;
     default: return false;
   }
-  return isfinite(x) && isfinite(y);
+  if(!isfinite(nx) || !isfinite(ny))return false;
+  x=nx;y=ny;
+  return true;
 }

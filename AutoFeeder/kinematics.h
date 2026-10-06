@@ -1,10 +1,11 @@
 #ifndef KINEMATICS_H
 #define KINEMATICS_H
 
-#define Q1_HOME -3.1415926
-#define Q2_HOME 2.1817
-#define HOME_X -42.6424
-#define HOME_Y -81.9152
+#include "Config.h"
+#define Q1_HOME Config::HOME_Q1
+#define Q2_HOME Config::HOME_Q2
+#define HOME_X Config::HOME_X_MM
+#define HOME_Y Config::HOME_Y_MM
 
 extern const float L1;
 extern const float L2;

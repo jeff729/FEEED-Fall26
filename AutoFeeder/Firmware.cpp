@@ -182,6 +182,8 @@ void reset_selected_profile() {
 }
 void start_calibration() {
   calibration_slot=selected;calibration_profile=profiles[selected];
+  // Cancellation must use this bowl's clearance, not the preceding feed's.
+  profile=profiles[calibration_slot];cycle_profile=calibration_slot;
   calibration_point=CalibrationPoint::ENTRY;calibration_confirm=false;
   enter(State::CALIBRATE);last_calibration=entered;pulse_led(1);
 }
@@ -238,16 +240,16 @@ bool safety_tick(uint32_t now,bool force=false) {
   if (!force && uint32_t(now-last_safety)<SAFETY_CHECK_INTERVAL)return state!=State::LOW_POWER && state!=State::FAULT;
   last_safety=now;
   battery_adc=analogRead(SERVO_VOLTAGE_PIN);servo_current=analogRead(SERVO_CURRENT_PIN);
+  if (state==State::LOW_POWER)return false; // Preserve entry clock / latched warning.
   if (battery_adc<LOW_POWER_VOLTAGE) {
     enter(State::LOW_POWER);digitalWrite(SERVO_POWER_PWM,LOW);return false;
   }
-  if (state==State::LOW_POWER)return false; // Power-cycle recovery only.
   if (state!=State::FAULT && servo_current>OVERLOAD_CURRENT) {set_fault(Fault::OVERLOAD);return false;}
   return state!=State::FAULT;
 }
 void update_led(uint32_t now) {
   bool on=false;
-  if (state==State::LOW_POWER)on=(uint32_t(now-entered)%1000)<500;
+  if (state==State::LOW_POWER)on=(uint32_t(now-entered)%(2*LOW_POWER_LED_HALF_MS))<LOW_POWER_LED_HALF_MS;
   else if(state==State::FAULT) {
     uint8_t count=uint8_t(fault);
     uint32_t group=count*2*LED_PULSE_MS+LED_GROUP_PAUSE_MS;
@@ -338,6 +340,13 @@ void feeder_loop() {
   joy_button.update(read_joystick_button(),now);
   mode_switch.update(digitalRead(MODE_SELECT_PIN)==LOW,now);
   check_profile_choice(now);
+#if ENABLE_DEBUG_PIN_TRACE
+  // Existing oscilloscope debug output D4; no UART or added feeder wiring.
+  // High pulse count per group is state enum + 1 (50 ms on / 50 ms off).
+  uint32_t trace_count=uint8_t(state)+1;
+  uint32_t trace_phase=uint32_t(now-entered)%(trace_count*100+750);
+  digitalWrite(DEBUG_PIN,(trace_phase<trace_count*100 && (trace_phase/50)%2==0)?HIGH:LOW);
+#endif
   bool safe=safety_tick(now);
   update_led(now);
   if (!safe) {

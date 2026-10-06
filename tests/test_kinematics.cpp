@@ -35,6 +35,9 @@ int main() {
   CHECK(load_profile(0, loaded));
   CHECK(near(loaded.end_x, 80) && near(loaded.end_y, -155));
   p.middle_x = nan;
+  x=8;y=9;
+  CHECK(!get_profile_step(p,2,x,y));
+  CHECK(x==8 && y==9); // Invalid step must not publish a partial coordinate.
   EEPROM.put(0, p);
   CHECK(!load_profile(0, loaded));
   CHECK(!save_profile(p, 0));
@@ -44,6 +47,13 @@ int main() {
   EEPROM.drop_writes=false;
   CHECK(validate_profile(default_profile(0)));
   CHECK(validate_profile(default_profile(3)));
+  const Profile legacy_bowl={-75,-82.5f,-70,-175,0,-175,70,-175,60,-90};
+  EEPROM.put(40,legacy_bowl);
+  int writes_before=EEPROM.writes;
+  CHECK(load_profile(1,loaded));
+  CHECK(near(loaded.entry_x,-70.99926f) && near(loaded.entry_y,-95.70244f));
+  CHECK(near(loaded.end_x,60) && near(loaded.end_y,-90));
+  CHECK(EEPROM.writes==writes_before); // Legacy repair is RAM-only.
   CHECK(!twoLinkIK(5, 0, 100, 50, true, a, b)); // D < -1.
   CHECK(!twoLinkIK(100, -100, 0, 100, true, a, b));
   CHECK(!twoLinkIK(100, -100, inf, 100, true, a, b));
