@@ -9,6 +9,13 @@
 extern const float L1;
 extern const float L2;
 
+// Outputs are committed only on success. Geometry arguments permit host tests
+// for unequal/invalid links; the feeder itself still uses 100/100 mm.
+bool twoLinkIK(float x, float y, float a, float b, bool elbowup, float &t1, float &t2);
+bool valid_joint_angles(float q1, float q2);
+enum class WorkspaceResult { Invalid, Unchanged, Adjusted };
+WorkspaceResult project_workspace(float &x, float &y);
+
 /**
  * @brief Calculates forward kinematics for given joint values.
  * @return True if the kinematic calculation was successful. If so, writes end effector position to x_ptr and y_ptr.
@@ -23,7 +30,8 @@ bool calc_ik(float x, float y, float &q1_ptr, float &q2_ptr);
 
 /**
  * @brief Constrains an ik point to be within workspace bounds.
- * @return True if the point was modified.
+ * @return True if modified or invalid. Invalid inputs are left unchanged;
+ * new callers should use project_workspace to distinguish these outcomes.
  */
 bool constrain_ik_point(float &x, float &y);
 
