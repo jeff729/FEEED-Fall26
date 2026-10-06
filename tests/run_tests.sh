@@ -19,3 +19,6 @@ ${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -Itests/stubs -IAutoF
 
 ${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -DENABLE_PLATE_JIGGLE=1 -DENABLE_DEBUG_PIN_TRACE=1 -Itests/stubs -IAutoFeeder tests/test_firmware.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/jiggle"
 "$test_build/jiggle"
+
+${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -DENABLE_PLATE_JIGGLE=1 -DRUN_PLATE_JIGGLE_ONCE_AT_HOME=1 -Itests/stubs -IAutoFeeder tests/test_firmware.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/lab-boot"
+"$test_build/lab-boot"

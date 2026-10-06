@@ -1,23 +1,31 @@
-Function of each Arduino pin for this project:
+F.E.E.E.D. Fall 2026 — Arduino Uno, unchanged SOURCE pin assignments
 
-0: Serial RX (unused)
-1: Serial TX (unused)
-2: User input switch
-3: DC motor A power pwm (high = full power)
-4: debug pin (unused in final design)
-5: linkage 1 servo signal
-6: linkage 2 servo signal
-7: Joystick button input
-8: DC motor B brake (high = brake)
-9: DC motor A brake (high = brake)
-10: Warning LED output
-11: DC motor B power pwm (high = full power)
-12: Servo power "direction" pin (high = forward)
-13: DC motor B direction pin (high = forward)
+D0: RX unused; do not enable UART with current D1 wiring
+D1: Mode-select switch INPUT_PULLUP (HIGH Advanced, LOW Simple)
+D2: Main user input switch, active LOW INPUT_PULLUP
+D3: Motor channel A PWM used as servo power enable (HIGH enabled)
+D4: Existing debug output, unused normally; optional lab state pulse trace
+D5: Shoulder (link 1) servo signal
+D6: Elbow (link 2) servo signal
+D7: Joystick button, active LOW INPUT_PULLUP
+D8: Motor channel B plate brake; disabled by default
+D9: Motor channel A brake listed in inherited hardware docs; not driven by firmware
+D10: Existing warning/status LED, digital output
+D11: Motor channel B plate PWM
+D12: Motor channel A servo supply direction, held HIGH
+D13: Motor channel B plate direction (normal direction LOW)
 
-A0: Servo current sensing
-A1: DC Motor current sensing
-A2: Servo motor voltage sensing
-A3: Joystick x axis
-A4: Joystick y axis
-A5: Potentiometer signal
+A0: Existing servo current sense
+A1: Existing plate current sense, not sampled by control logic (no measured cutoff)
+A2: Joystick X, inverted in source
+A3: Joystick Y
+A4: Servo supply/battery voltage sense
+A5: Four-profile selection potentiometer
+
+Discrepancies in inherited documentation:
+- Pinout.txt called D1 unused Serial TX; source and README used it for mode selection.
+- Both old READMEs and Pinout.txt called A2 voltage, A3 joystick X, A4 joystick Y.
+  Actual Joystick.h used analog channels 2/3; the sketch used channel 4 voltage.
+These documentation corrections do NOT change pins or instruct rewiring.
+Verify the existing physical wire identities in the lab before running firmware.
+No hardware Serial.begin is allowed: UART TX would drive the D1 mode switch.

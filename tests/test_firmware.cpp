@@ -13,11 +13,14 @@ void delay(unsigned long) { throw std::runtime_error("Blocking delay in firmware
 static int checks=0,failures=0;
 #define CHECK(c) do { ++checks;if(!(c)){ std::fprintf(stderr,"FAIL %d: %s (state=%d fault=%d)\n",__LINE__,#c,int(debug_snapshot().state),int(debug_snapshot().fault));++failures; } } while(0)
 static void run(uint32_t ms) { for(uint32_t i=0;i<ms;i+=10) {test_now+=10;feeder_loop();} }
+#if !RUN_PLATE_JIGGLE_ONCE_AT_HOME
 static void click(int pin,uint32_t hold=100) {test_digital[pin]=LOW;run(hold);test_digital[pin]=HIGH;run(60);}
+#endif
 static bool await(State state,uint32_t budget=120000) {
   for(uint32_t i=0;i<budget;i+=10) {if(debug_snapshot().state==state)return true;run(10);}
   return debug_snapshot().state==state;
 }
+#if !RUN_PLATE_JIGGLE_ONCE_AT_HOME
 static bool joystick_to(float x,float y) {
   for(uint32_t i=0;i<90000;i+=20) {
     DebugSnapshot d=debug_snapshot();
@@ -32,6 +35,7 @@ static bool joystick_to(float x,float y) {
   }
   test_analog[2]=test_analog[3]=512;return false;
 }
+#endif
 static void boot(bool simple=false,bool valid=true) {
   test_now=0;test_servo_writes=0;
   for(int &v:test_digital)v=HIGH;
@@ -47,6 +51,13 @@ static void boot(bool simple=false,bool valid=true) {
 }
 int main() {
   try {
+#if RUN_PLATE_JIGGLE_ONCE_AT_HOME
+    boot();CHECK(await(State::WAIT));run(10);
+    CHECK(debug_snapshot().state==State::JIGGLE);
+    run(10);CHECK(test_pwm[11]==Config::JIGGLE_PWM);
+    CHECK(await(State::WAIT,2000));run(2000);
+    CHECK(debug_snapshot().state==State::WAIT && test_pwm[11]==0);
+#else
     boot(); CHECK(await(State::WAIT));CHECK(test_pwm[11]==0);
 #if ENABLE_DEBUG_PIN_TRACE
     run(10);int trace_pulses=test_output[4]?1:0;bool trace_on=test_output[4];
@@ -170,6 +181,7 @@ int main() {
 #else
     CHECK(!start_plate_jiggle()); // Disabled in the normal firmware build.
 #endif
+#endif // RUN_PLATE_JIGGLE_ONCE_AT_HOME
   } catch(const std::exception &e) {std::fprintf(stderr,"FAIL exception: %s\n",e.what());++failures;}
   std::printf("firmware integration: %d checks, %d failures\n",checks,failures);
   return failures?1:0;

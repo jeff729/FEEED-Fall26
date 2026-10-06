@@ -82,3 +82,28 @@ a lab-only explicit trigger, never through ordinary feeding.
   incorrect physical assumptions would require lab wiring verification.
 - Ruling: execute the user's fully specified scope inline; no intermediate
   permission gates or additional worktree. Request independent review at end.
+
+- Task 1 complete: architecture recorded before code, commit 6103fbe; inherited
+  Uno compile passed with missing-return/function-pointer warnings.
+- Task 2 complete: 919dd76, finite transactional FK/IK and profile validation;
+  regression failures observed before fixes.
+- Task 3 complete: 35bb44a, debounced timing, synchronized eased trajectories
+  and bounded recovery; velocity/acceleration/rollover tests passing.
+- Task 4 complete: 88cb1bc, centralized states/fault/motor stop and nonblocking
+  inputs/motion/calibration. 3f3369c adds confirmed save/readback and feedback.
+- Task 5 complete: 22eaffe, disabled jiggle with zero-PWM direction changes;
+  63ac01d expands corruption/mode/profile/calibration/low-power regressions
+  and isolated build tooling. Tuning/physical/checklist/state docs added.
+- Ruling: only exact whole-template legacy bowl defaults receive the original
+  known entry projection; general invalid saved coordinates are rejected.
+  This preserves effective factory behavior without accepting arbitrary
+  unreachable user profiles. Cost if wrong: an old user profile differing
+  from that exact template requires explicit inspection/recalibration.
+- Ruling: cancel returns home without delivery; severe overload/retry limit
+  holds last valid command instead of blind retreat. Cost: operator may need
+  to inspect/reposition after a fault; command position is not feedback.
+- Ruling: replace blocking calibration nod with LED counts; keep calibration
+  plate stopped by default. Cost: existing calibration feel changes, but no
+  added wiring or unsafe elbow overshoot; rotating calibration is lab-only.
+- Task 6 in progress: independent whole-branch review, then final green suite,
+  normal/lab Uno builds, UART conflict rejection, clean main and branch push.
