@@ -137,6 +137,26 @@ int main() {
     boot();test_now=0xfffffff0u;feeder_setup();CHECK(await(State::WAIT));
     click(2);CHECK(await(State::FEED_WAIT));click(2);CHECK(await(State::WAIT));
 
+    boot();CHECK(await(State::WAIT));uint32_t home_arrival=test_now;
+    for(int pin : {2,7})for(uint32_t lead : {10u,20u,30u}) {
+      boot();run(home_arrival-lead);CHECK(debug_snapshot().state==State::HOME);
+      test_digital[pin]=LOW;run(100);test_digital[pin]=HIGH;run(60);
+      CHECK(debug_snapshot().state==State::WAIT); // Raw press began before idle.
+    }
+
+    boot();CHECK(await(State::WAIT));test_analog[5]=800;run(200);click(7,1100);
+    CHECK(joystick_to(-150,-120));float cancel_floor=debug_snapshot().target_y;
+    click(2);bool cancel_complete=false,no_clearance_dip=true;
+    for(uint32_t i=0;i<120000;i+=10) {
+      DebugSnapshot d=debug_snapshot();
+      if(d.target_y<cancel_floor-0.05f)no_clearance_dip=false;
+      if(d.state==State::WAIT) {cancel_complete=true;break;}
+      if(d.state==State::FAULT)break;
+      run(10);
+    }
+    CHECK(no_clearance_dip); // No downward sweep into the bowl.
+    CHECK(cancel_complete || debug_snapshot().state==State::FAULT);
+
     boot();CHECK(await(State::WAIT));
     test_analog[5]=800;run(200);click(7,1100);
     CHECK(debug_snapshot().state==State::CALIBRATE);

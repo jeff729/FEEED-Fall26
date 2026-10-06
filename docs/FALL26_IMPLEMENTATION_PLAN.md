@@ -105,5 +105,30 @@ a lab-only explicit trigger, never through ordinary feeding.
 - Ruling: replace blocking calibration nod with LED counts; keep calibration
   plate stopped by default. Cost: existing calibration feel changes, but no
   added wiring or unsafe elbow overshoot; rotating calibration is lab-only.
-- Task 6 in progress: independent whole-branch review, then final green suite,
-  normal/lab Uno builds, UART conflict rejection, clean main and branch push.
+- Task 6 software verification complete: one independent whole-branch review
+  and reproducing fixes; 6577 normal and sanitizer checks passed, normal/lab
+  Uno builds passed, UART conflict guard rejected the unsafe build. Final
+  reviewed changes are committed on development and pushed only to origin;
+  final status/ref verification is recorded in the delivery report.
+
+## Independent review regressions
+
+One read-only whole-branch reviewer found three material issues. Each was
+reproduced by a failing host regression before fixing it:
+
+- Raw button presses begun 10/20/30 ms before HOME reaches WAIT could finish
+  debouncing in WAIT and start a cycle. Both buttons now require a stable
+  release on idle entry before a new gesture is accepted.
+- Canceling above the plate clearance could follow a joint return arc dipping
+  below the current height. Cancellation now uses constant-height Cartesian
+  retreat; returning from straight delivery uses a clearance-preflighted
+  initial inherited joint route followed by Cartesian return.
+- Cartesian IK near full extension could exceed configured acceleration.
+  Cartesian paths/profiles reject numerically singular neighborhoods, while
+  unchanged full physical joint travel remains available to joint trajectories.
+  Live command candidates enforce discrete velocity and acceleration limits.
+
+The reviewer could not validate physical tracking, contact force, bowl shape,
+ADC calibration, controller reverse/brake behavior, actual AVR timing/stack
+headroom or plausible interrupted EEPROM writes. Those remain lab validation
+items, not software safety claims. No second independent review is claimed.

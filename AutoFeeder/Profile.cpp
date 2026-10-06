@@ -23,7 +23,7 @@ static bool validate_point(float &x, float &y) {
   if (project_workspace(x,y) == WorkspaceResult::Invalid) return false;
   if (hypotf(x-ox,y-oy) > Config::PROFILE_ROUNDOFF_MM) return false;
   float a,b;
-  return calc_ik(x,y,a,b) && valid_joint_angles(a,b);
+  return calc_ik(x,y,a,b) && valid_cartesian_angles(a,b);
 }
 
 bool normalize_profile(Profile &p) {

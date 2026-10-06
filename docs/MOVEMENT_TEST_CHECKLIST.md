@@ -21,6 +21,7 @@ Changed parameter (one at a time), old -> new: ____
 - [ ] Advanced long press: plate only, stops on release/mode change, no subsequent scoop.
 - [ ] Simple: automatic rotate, stop, settle, scoop, delivery, timed return.
 - [ ] Hold main input through an entire return: no second cycle.
+- [ ] Press either button just before reaching idle: no cycle until release and a fresh press.
 - [ ] New presses cancel descend/scoop/lift; no delivery after canceled scoop.
 - [ ] Delivery press returns early; mode/profile changes during a cycle do not redirect it.
 - [ ] Low voltage, **only if safely testable unloaded**: PWM zero, servo supply off,
@@ -36,7 +37,9 @@ Changed parameter (one at a time), old -> new: ____
 - [ ] If a contact retry occurs naturally, current decreases after safe offset.
 - [ ] Overload is **not** deliberately induced against a rigid obstruction/person.
 - [ ] User cancel clears before returning; shoulder-limit cases either clear safely or fault.
-- [ ] Normal return and home remain above bowl rim; plate stays stopped.
+- [ ] Normal staged return from straight delivery and home remain above bowl rim; plate stays stopped.
+- [ ] Cancel while already above clearance: horizontal retreat does not dip toward the bowl.
+- [ ] Near-straight invalid Cartesian calibration/paths are rejected; do not widen physical limits to override.
 - [ ] Spoon exit +5/+20 and return +30 inherited clearances are physically adequate.
 
 ## Food trials

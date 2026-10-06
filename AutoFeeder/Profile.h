@@ -17,7 +17,8 @@ extern Profile profiles[4];
 enum class CalibrationPoint : uint8_t { ENTRY, BOTTOM, MIDDLE, FRONT, END };
 const Profile &default_profile(uint8_t idx);
 bool validate_profile(const Profile &p);
-// Normalize only <=0.05 mm roundoff; invalid data leaves p unchanged.
+// Normalize <=0.05 mm roundoff or the exact legacy factory bowl template;
+// invalid data leaves p unchanged.
 bool normalize_profile(Profile &p);
 
 /**

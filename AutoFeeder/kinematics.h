@@ -14,6 +14,7 @@ extern const float L2;
 // for unequal/invalid links; the feeder itself still uses 100/100 mm.
 bool twoLinkIK(float x, float y, float a, float b, bool elbowup, float &t1, float &t2);
 bool valid_joint_angles(float q1, float q2);
+bool valid_cartesian_angles(float q1, float q2);
 enum class WorkspaceResult { Invalid, Unchanged, Adjusted };
 WorkspaceResult project_workspace(float &x, float &y);
 

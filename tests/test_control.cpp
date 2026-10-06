@@ -59,6 +59,29 @@ int main() {
   CHECK(done);
   float x,y; CHECK(calc_fk(q1,q2,x,y)); CHECK(std::fabs(x-80)<0.002f && std::fabs(y+120)<0.002f);
   CHECK(!motion.begin_cart(q1,q2,250,0,0.3f,0));
+  float start_a,start_b;
+  CHECK(checked_ik(0,-175,start_a,start_b));
+  CHECK(!motion.begin_cart(start_a,start_b,0,-200,0.3f,0));
+  CHECK(checked_ik(0,-200,start_a,start_b)); // Physical FK/IK/joint limit is unchanged.
+  CHECK(!motion.begin_cart(start_a,start_b,0,-175,0.3f,0));
+  CHECK(motion.begin_joint(start_a,start_b,0,0,0.3f,0)); // Straight pose remains supported in joint space.
+  for(int direction=0;direction<2;++direction) {
+    CHECK(checked_ik(0,direction ? -199.0f : -175.0f,q1,q2));
+    CHECK(motion.begin_cart(q1,q2,0,direction ? -175.0f : -199.0f,0.3f,0));
+    float velocity1=0,velocity2=0;done=false;
+    for(uint32_t now=20;now<120000;now+=20) {
+      previous1=q1;previous2=q2;
+      MotionResult result=motion.step(now,q1,q2);
+      CHECK(result!=MotionResult::Invalid);
+      float v1=(q1-previous1)/0.02f,v2=(q2-previous2)/0.02f;
+      CHECK(std::fabs(v1-velocity1)/0.02f<=0.602f);
+      CHECK(std::fabs(v2-velocity2)/0.02f<=0.602f);
+      velocity1=v1;velocity2=v2;
+      if(result==MotionResult::Done) {done=true;break;}
+      if(result==MotionResult::Invalid)break;
+    }
+    CHECK(done);
+  }
 
   ContactRecovery contact;
   CHECK(contact.retry()); CHECK(contact.offset == 1 && contact.retries == 1);

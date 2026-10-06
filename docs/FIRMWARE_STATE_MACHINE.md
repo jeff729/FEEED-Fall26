@@ -12,7 +12,8 @@ within inherited joint/pulse limits, and derived from current valid targets.
 |---|---|---|---|
 | STARTUP | Inherited initial command with supply disabled, enable supply; nonblocking 500 ms settle; then joystick centre sampling | STARTUP_LIFT | Stopped |
 | STARTUP_LIFT | Eased synchronized move to inherited straight pose (0,0) | RETURN automatically | Stopped |
-| RETURN | Joint move to selected end_x, end_y+30; valid IK required | HOME | Stopped |
+| RETURN_CLEAR_START | Leave straight delivery pose along a clearance-preflighted initial fraction of the inherited joint return route | Cartesian RETURN, or FAULT if no supported route | Stopped |
+| RETURN | Cartesian move to selected end_x, end_y+30; above-clearance cancellation instead preserves current height | HOME | Stopped |
 | HOME | Preflight Cartesian home; if invalid, try joint home with sampled clearance-floor check | WAIT, or FAULT if neither path valid | Stopped |
 | WAIT | Accept only gestures begun here; joystick long/reset gestures; latch selected mode/profile for cycle | ROTATE, AUTO_ROTATE, DESCEND, CALIBRATE or FAULT | Stopped |
 | ROTATE | Advanced hold: elapsed ramp; raw main release or mode LOW stops immediately | SETTLE | Powered only while appropriate input held |
@@ -34,8 +35,9 @@ within inherited joint/pulse limits, and derived from current valid targets.
 The profile index and Simple/Advanced choice are captured at cycle start;
 pot/mode changes cannot redirect an active feed. Calibration separately
 captures its slot and associated clearance profile. Input release that began
-in another state is consumed, preventing accidental calibration reentry or
-a second feed after holding cancel through home.
+in another state is consumed, including raw edges still being debounced at
+WAIT entry. Both buttons require a stable raw/debounced release before rearming,
+preventing accidental calibration reentry or a second feed after cancel.
 
 Global current >500 causes a hold fault in every powered state, including
 return/calibration/manual rotation. Battery <662 causes latched LOW_POWER
@@ -44,6 +46,10 @@ most three retries and 3 mm offset. No automatic overload retract is claimed
 safe because there are no position sensors and current can indicate a jam.
 
 The sampled/preflighted paths verify mathematical command geometry only.
+Near-singular Cartesian paths are rejected without changing the inherited
+joint limits; each live trajectory candidate passes commanded velocity and
+acceleration bounds before a servo write. Above-clearance cancellation keeps
+its current commanded height rather than taking a downward joint-space dip.
 They cannot verify actual bowl shape, clearance, mechanical lag or contact
 force. A route can fail safely at the shoulder stop. Use the physical test
 guide before energizing and before any person-delivery trial.

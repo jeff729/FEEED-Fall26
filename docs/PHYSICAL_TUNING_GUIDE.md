@@ -14,7 +14,8 @@ energizing; do not swap wires or pin numbers to fit the old documentation.
    brake, jiggle, UART and rotating calibration disabled. Only manually
    upload when the lab operator has cleared the mechanism.
 2. Keep the utensil unloaded and observe startup snap, inherited lift,
-   return waypoint and home. Keep joystick neutral during startup. Stop
+   staged return from straight delivery, return waypoint and home. Keep
+   joystick neutral during startup. Stop
    on unexpected direction, interference, buzzing or fault; do not simply
    increase a threshold to continue. Record measured boot/cycle times.
 3. At home, check the profile potentiometer and LED selection counts.
@@ -28,7 +29,9 @@ energizing; do not swap wires or pin numbers to fit the old documentation.
 5. In Advanced mode, test a main quick press for one cycle, a hold for
    plate-only rotation, raw release stop, and a short joystick shortcut.
    Check cancel during descend, near the bottom, during lift, and early
-   return at delivery. Check a held cancel does not restart at home.
+   return at delivery. Check a held cancel does not restart at home. Presses
+   begun immediately
+   before idle must also be consumed; release and press again intentionally.
 6. Run empty-bowl scoops. Check corner slowing, clearance and return. Use
    only a calibrated path; a valid numerical profile is not evidence of
    no physical collision. Stop if the spoon scrapes or the linkage stalls.
@@ -66,7 +69,11 @@ the same bowl/food/profile trial and record the result.
 
 Do not tune pulse widths, trim or workspace boundaries to force a rejected
 target to work. Inspect calibration and physical alignment first. Retain
-joint travel and link lengths. Increasing retry limits is not a substitute
+joint travel and link lengths. Keep CARTESIAN_SINGULARITY_ANGLE and numerical
+roundoff tolerances unchanged. Observe the RETURN_START_FRACTION=0.25 staged
+return from straight delivery; its path is sampled for clearance, but actual
+tracking and clearance still require lab observation before any adjustment.
+Increasing retry limits is not a substitute
 for correcting an overly deep calibrated bottom/front point. An empty
 spoon without scraping often calls for a profile/food trial, not more speed.
 

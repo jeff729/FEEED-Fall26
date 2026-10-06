@@ -8,6 +8,7 @@ struct DebouncedButton {
   void begin(bool raw, uint32_t now);
   void update(bool raw, uint32_t now);
   bool long_press(uint32_t duration, uint32_t now);
+  void require_release(uint32_t now);
 private:
   bool raw_=false, armed_=true, long_sent_=false;
   uint32_t changed_=0, pressed_at_=0;
@@ -25,6 +26,7 @@ public:
 private:
   bool active_=false, cart_=false;
   float a_=0,b_=0,da_=0,db_=0,x_=0,y_=0,dx_=0,dy_=0,speed_=0;
+  float velocity_a_=0,velocity_b_=0;
   uint32_t last_=0,elapsed_=0,duration_=0;
   bool duration(float velocity_distance, float acceleration_distance, uint32_t now);
 };

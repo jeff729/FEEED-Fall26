@@ -30,6 +30,11 @@ bool valid_joint_angles(float q1, float q2) {
   return isfinite(q1) && isfinite(q2) && q1 >= -K_PI && q1 <= 0 && q2 >= 0 && q2 <= K_PI;
 }
 
+bool valid_cartesian_angles(float q1, float q2) {
+  return valid_joint_angles(q1,q2) && q2>=Config::CARTESIAN_SINGULARITY_ANGLE &&
+         q2<=K_PI-Config::CARTESIAN_SINGULARITY_ANGLE;
+}
+
 bool calc_ik(float x, float y, float &q1, float &q2) {
   return twoLinkIK(x,y,L1,L2,true,q1,q2);
 }

@@ -29,6 +29,12 @@ constexpr int SERVO_MIN_PW=544, SERVO_MAX_PW=2400, SERVO1_TRIM=0, SERVO2_TRIM=0;
 constexpr float HOME_SPEED=0.3f, DESCEND_SPEED=0.3f, SCOOP_SPEED=0.3f;
 constexpr float LIFT_SPEED=0.225f, DELIVERY_SPEED=0.225f, RETURN_SPEED=0.3f;
 constexpr float CALIBRATION_SPEED=0.3f, JOINT_ACCELERATION=0.6f;
+constexpr float JOINT_ACCELERATION_ROUNDOFF=0.002f;
+// Numerical Cartesian planner condition, not a new physical joint limit.
+// Joint-space delivery (q2=0) remains supported; ill-conditioned IK paths
+// are rejected before any servo command instead of exceeding acceleration.
+constexpr float CARTESIAN_SINGULARITY_ANGLE=0.05f;
+constexpr float RETURN_START_FRACTION=0.25f;
 constexpr float SCOOP_CARTESIAN_SPEED=10.0f, CALIBRATION_MM_PER_SECOND=10.0f;
 constexpr uint32_t MOTION_TICK_MS=20, STARTUP_SETTLE_MS=500;
 

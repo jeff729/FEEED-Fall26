@@ -84,6 +84,7 @@ Software checks cannot establish physical food retention or face safety.
 - [All tuning parameters and fault behavior](docs/TUNING_GUIDE.md)
 - [Exact first physical test and tuning sequence](docs/PHYSICAL_TUNING_GUIDE.md)
 - [Movement and food trial checklist](docs/MOVEMENT_TEST_CHECKLIST.md)
+- [Software verification and remaining lab work](docs/VERIFICATION_REPORT.md)
 
 Normal feeding excludes jiggle and braking. For an explicitly cleared lab
 experiment only, build with:

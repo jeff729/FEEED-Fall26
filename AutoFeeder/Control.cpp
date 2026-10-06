@@ -14,6 +14,12 @@ void DebouncedButton::update(bool raw,uint32_t now) {
     if (down) { pressed_at_=now;long_sent_=false;pressed=armed_; }
     else { held_ms=uint32_t(now-pressed_at_);released=armed_;armed_=true; }
   }
+  if (!armed_ && !raw_ && !down && uint32_t(now-changed_)>=Config::BUTTON_DEBOUNCE_MS)
+    armed_=true;
+}
+void DebouncedButton::require_release(uint32_t now) {
+  pressed=released=false;
+  armed_=!raw_ && !down && uint32_t(now-changed_)>=Config::BUTTON_DEBOUNCE_MS;
 }
 bool DebouncedButton::long_press(uint32_t duration,uint32_t now) {
   if (!armed_ || !down || long_sent_ || uint32_t(now-pressed_at_) < duration) return false;
@@ -39,7 +45,7 @@ bool Motion::duration(float velocity_distance,float acceleration_distance,uint32
   if (!isfinite(seconds) || seconds > 600.0f) return false;
   duration_=uint32_t(ceilf(seconds*1000.0f));
   if (duration_ < Config::MOTION_TICK_MS) duration_=Config::MOTION_TICK_MS;
-  last_=now;elapsed_=0;active_=true;
+  last_=now;elapsed_=0;active_=true;velocity_a_=velocity_b_=0;
   return true;
 }
 bool Motion::begin_joint(float a,float b,float ta,float tb,float speed,uint32_t now) {
@@ -52,15 +58,16 @@ bool Motion::begin_joint(float a,float b,float ta,float tb,float speed,uint32_t 
 bool Motion::begin_cart(float a,float b,float x,float y,float speed,uint32_t now) {
   stop();
   float ta,tb;
-  if (!valid_joint_angles(a,b) || !calc_fk(a,b,x_,y_) || !checked_ik(x,y,ta,tb)) return false;
+  if (!valid_cartesian_angles(a,b) || !calc_fk(a,b,x_,y_) ||
+      !checked_ik(x,y,ta,tb) || !valid_cartesian_angles(ta,tb)) return false;
   cart_=true;a_=a;b_=b;dx_=x-x_;dy_=y-y_;speed_=speed;
   // Preflight the actual straight path. Estimate derivatives to set a slow
-  // common clock; live stepping still checks every candidate and joint rate.
+  // common clock; live stepping checks each candidate's joint rate/acceleration.
   const uint8_t samples=24;
   float last_a=a,last_b=b,last_sa=0,last_sb=0,derivative=0,curvature=0;
   for (uint8_t i=1;i<=samples;++i) {
     float t=float(i)/samples;
-    if (!checked_ik(x_+dx_*t,y_+dy_*t,ta,tb)) return false;
+    if (!checked_ik(x_+dx_*t,y_+dy_*t,ta,tb) || !valid_cartesian_angles(ta,tb)) return false;
     float sa=(ta-last_a)*samples,sb=(tb-last_b)*samples;
     derivative=fmaxf(derivative,fmaxf(fabsf(sa),fabsf(sb)));
     if (i>1) curvature=fmaxf(curvature,fmaxf(fabsf(sa-last_sa),fabsf(sb-last_sb))*samples);
@@ -93,6 +100,12 @@ MotionResult Motion::step(uint32_t now,float &a,float &b) {
     if (!valid_joint_angles(na,nb)) { stop();return MotionResult::Invalid; }
     const float max_delta=speed_*float(delta)/1000.0f+0.000001f;
     if (fabsf(na-a) <= max_delta && fabsf(nb-b) <= max_delta) {
+      float va=(na-a)*1000.0f/delta,vb=(nb-b)*1000.0f/delta;
+      const float max_velocity_change=(Config::JOINT_ACCELERATION+Config::JOINT_ACCELERATION_ROUNDOFF)*delta/1000.0f;
+      if (fabsf(va-velocity_a_)>max_velocity_change || fabsf(vb-velocity_b_)>max_velocity_change) {
+        stop();return MotionResult::Invalid;
+      }
+      velocity_a_=va;velocity_b_=vb;
       a=na;b=nb;elapsed_=next;
       if (elapsed_ == duration_) { stop();return MotionResult::Done; }
       return MotionResult::Running;

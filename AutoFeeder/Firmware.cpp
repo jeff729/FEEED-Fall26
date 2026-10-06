@@ -48,6 +48,7 @@ void enter(State next) {
   // Single transition owner: no state can inherit a powered plate or stale path.
   stop_plate();motion.stop();state=next;entered=uint32_t(millis());
   wait_main_pending=wait_joy_pending=false;
+  if(next==State::WAIT) {main_button.require_release(entered);joy_button.require_release(entered);}
 }
 void set_fault(Fault code) {
   fault=code;enter(State::FAULT);
@@ -108,9 +109,32 @@ void start_home(State next=State::HOME) {
   }
   begin_joint(Q1_HOME,Q2_HOME,HOME_SPEED,next);
 }
+bool joint_clearance_path(float a,float b,float floor) {
+  float x,y;
+  for(uint8_t i=1;i<=24;++i) {
+    float t=float(i)/24;
+    if(!calc_fk(q1+(a-q1)*t,q2+(b-q2)*t,x,y) || y<floor-Config::PROFILE_ROUNDOFF_MM)return false;
+  }
+  return true;
+}
 void start_return() {
-  // Inherited return waypoint, validated separately from EEPROM corruption.
-  begin_point(profile.end_x,profile.end_y+RETURN_CLEARANCE_MM,RETURN_SPEED,State::RETURN,false);
+  const float x=profile.end_x,y=profile.end_y+RETURN_CLEARANCE_MM;
+  if(valid_cartesian_angles(q1,q2)) {
+    begin_point(x,y,RETURN_SPEED,State::RETURN,true);return;
+  }
+  // Escape the straight-arm singularity along the first part of the inherited
+  // joint return route. Verify clearance before movement; then use a straight
+  // Cartesian route to the existing calibrated return waypoint.
+  float a,b,cx,cy;
+  if(!checked_ik(x,y,a,b) || !calc_fk(q1,q2,cx,cy)) {set_fault(Fault::KINEMATICS);return;}
+  float fraction=RETURN_START_FRACTION;
+  if(b>q2)fraction=fmaxf(fraction,(2*CARTESIAN_SINGULARITY_ANGLE-q2)/(b-q2));
+  if(fraction>1)fraction=1;
+  a=q1+(a-q1)*fraction;b=q2+(b-q2)*fraction;
+  if(!valid_cartesian_angles(a,b) || !joint_clearance_path(a,b,fminf(cy,y))) {
+    set_fault(Fault::KINEMATICS);return;
+  }
+  begin_joint(a,b,RETURN_SPEED,State::RETURN_CLEAR_START);
 }
 void safe_abort(bool retract) {
   stop_plate();motion.stop();
@@ -118,9 +142,13 @@ void safe_abort(bool retract) {
   float x,y;
   if (!calc_fk(q1,q2,x,y)) {set_fault(Fault::KINEMATICS);return;}
   // Use the existing calibrated end + inherited clearance; never move lower
-  // to "clear" a bowl. At/above the rim take the inherited return route.
+  // to "clear" a bowl. At/above the rim preserve height during retreat.
   float clearance=profile.end_y+RETURN_CLEARANCE_MM;
-  if (y>=clearance) {start_return();return;}
+  if (y>=clearance) {
+    if(!valid_cartesian_angles(q1,q2))start_return();
+    else begin_point(profile.end_x,y,RETURN_SPEED,State::RETURN,true);
+    return;
+  }
   // Respect the inherited shoulder -pi stop while retracting vertically.
   // This ceiling comes from arm geometry, not an invented bowl dimension.
   float shoulder_x=x+L1;
@@ -427,6 +455,9 @@ void feeder_loop() {
       break;
     case State::FEED_WAIT:
       if(cancel || (simple_cycle && uint32_t(now-entered)>=FEED_WAIT_TIME))start_return();
+      break;
+    case State::RETURN_CLEAR_START:
+      if(move_tick(now))begin_point(profile.end_x,profile.end_y+RETURN_CLEARANCE_MM,RETURN_SPEED,State::RETURN,true);
       break;
     case State::RETURN:
       if(move_tick(now))start_home();

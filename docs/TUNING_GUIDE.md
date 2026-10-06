@@ -37,7 +37,10 @@ validated by these host tests.
 | DELIVERY_SPEED | 0.225 rad/s | Startup's inherited lift to straight pose |
 | RETURN_SPEED | 0.3 rad/s | Delivery return waypoint and user-cancel clearance |
 | CALIBRATION_SPEED | 0.3 rad/s | Joystick joint-rate cap, including near singularities |
-| JOINT_ACCELERATION | 0.6 rad/s² | Quintic joint trajectory acceleration bound; Cartesian duration uses a conservative sampled derivative estimate |
+| JOINT_ACCELERATION | 0.6 rad/s² | Common joint acceleration bound; Cartesian duration estimates derivatives, and live candidates must pass this bound before publication |
+| JOINT_ACCELERATION_ROUNDOFF | 0.002 rad/s² | Numerical tolerance for the live command check; not additional physical acceleration allowance |
+| CARTESIAN_SINGULARITY_ANGLE | 0.05 rad | Reject Cartesian paths within this distance of elbow 0 or pi; numerical planner guard, not a change to physical joint travel |
+| RETURN_START_FRACTION | 0.25 | Initial fraction of inherited joint return route to leave straight-arm singularity; sampled clearance checked before movement |
 | SCOOP_CARTESIAN_SPEED | 10 mm/s | Additional Cartesian trajectory speed cap |
 | CALIBRATION_MM_PER_SECOND | 10 mm/s | Requested joystick translation; actual achieved point is stored |
 | MOTION_TICK_MS | 20 ms | Servo command trajectory cadence; delayed loops slow movement instead of catching up |
@@ -62,8 +65,15 @@ old unexplained 4x multiplier. Measure cycle time, loaded movement and spoon
 bounce before changing rates. Speed and acceleration must be positive;
 timing intervals must remain small relative to the uint32 clock range.
 Quintic segments stop gently at each calibrated corner. No splines round
-unknown bowl walls. Cartesian candidates also pass a hard joint-rate check;
-this is not a measured physical acceleration guarantee for hobby servos.
+unknown bowl walls. Every published trajectory candidate passes hard joint
+velocity and discrete acceleration checks. A rejected candidate never reaches
+the servo command; the feeder holds and faults. Near a straight/folded elbow,
+Cartesian profiles/paths are rejected before movement because IK derivatives
+become singular. Joint-space movement still supports the inherited full range,
+including the straight delivery pose. Returning from that pose follows a
+preflighted initial part of the inherited joint return route, then a Cartesian
+leg to the inherited return waypoint. These checks constrain commanded motion;
+they do not guarantee measured physical acceleration of hobby servos.
 
 ## Contact and fault behavior
 
@@ -74,7 +84,10 @@ retries / 3 mm are the initial bounds. Above 500, invalid IK, invalid
 paths, or exhausted contact recovery latches FAULT and stops the plate.
 The last valid servo command is held; overload does not trigger a blind
 retract against an obstruction. User cancellation attempts a validated
-vertical clearance then home without delivery. At the shoulder stop the
+vertical clearance then home without delivery. If already above clearance,
+cancellation traverses horizontally at the current commanded height before
+home instead of dipping down to a lower return waypoint. At the shoulder stop
+the
 vertical clearance is limited by existing link geometry; a joint home
 fallback is checked for a downward dip. If no valid commanded path exists,
 the firmware holds and signals a fault instead of inventing a route.
@@ -88,7 +101,10 @@ validation, not proof that the utensil is safe around a person.
 
 Four raw ten-float profiles stay at EEPROM offsets 0,40,80,120. No format
 migration, checksum or automatic writes on boot. All five points and
-derived exit/return points are validated. The exact inherited built-in
+derived exit/return points are validated, including Cartesian conditioning.
+Do not loosen the singularity guard to accept a rejected near-straight profile;
+calibrate a supported path within the unchanged physical limits. The exact
+inherited built-in
 bowl template is recognized and receives the old entry projection in RAM:
 (-75,-82.5) -> (-70.99926,-95.70244). Other substantially invalid points
 are rejected. A bad slot gets its default in RAM, but selecting it for a
@@ -116,7 +132,9 @@ then settles and waits. Release after a long hold never scoops. Changing
 the mode switch to Simple also stops manual rotation.
 Simple (D1 LOW): one press-release rotates for 600 ms, stops, settles
 400 ms, scoops, delivers, waits 6500 ms and returns. Held input never
-repeats cycles. A new press during approach/scoop/lift cancels; a new press
+repeats cycles. Idle re-arms only after both raw and debounced release;
+a raw press begun just before reaching idle is consumed. A new press during
+approach/scoop/lift cancels; a new press
 at delivery returns early. Starting mode/profile are captured for a cycle.
 Startup follows the inherited snap pose and straight-arm lift, then
 automatically returns home instead of waiting at the delivery pose.
