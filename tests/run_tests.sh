@@ -25,3 +25,9 @@ ${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -DENABLE_PLATE_JIGGLE
 
 ${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -Itests/stubs -IAutoFeeder tests/test_review.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/review"
 "$test_build/review"
+
+${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -IAutoFeeder tests/test_invariants.cpp AutoFeeder/kinematics.cpp -o "$test_build/invariants"
+"$test_build/invariants"
+
+${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -Itests/stubs -IAutoFeeder tests/test_timing.cpp AutoFeeder/Firmware.cpp AutoFeeder/Control.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp AutoFeeder/DCMotor.cpp AutoFeeder/Joystick.cpp -o "$test_build/timing"
+"$test_build/timing"

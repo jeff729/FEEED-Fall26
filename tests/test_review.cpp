@@ -31,6 +31,7 @@ static void click(int pin,uint32_t hold=100) {
 }
 static void boot(bool valid=true) {
   test_now=0;test_servo_writes=0;EEPROM.drop_writes=false;
+  EEPROM.bytes_per_write=-1;EEPROM.after_put=nullptr;
   for(int &v:test_digital)v=HIGH;
   for(int &v:test_analog)v=512;
   std::memset(test_pwm,0,sizeof(test_pwm));std::memset(test_output,0,sizeof(test_output));
@@ -106,6 +107,48 @@ int main() {
   boot(false);EEPROM.drop_writes=true;click(7,10100);
   CHECK(debug_snapshot().fault==Fault::STORAGE);
   CHECK(test_servo_writes==0 && test_pwm[11]==0 && test_output[3]==LOW);
+  EEPROM.drop_writes=false;
+
+  for(int adc : {501,100}) {
+    CASE("reset rechecks safety after slow EEPROM writes");
+    boot(false);
+    if(adc==501)EEPROM.after_put=[](){test_analog[0]=501;};
+    else EEPROM.after_put=[](){test_analog[4]=661;};
+    click(7,10100);
+    if(adc==501)CHECK(debug_snapshot().fault==Fault::OVERLOAD);
+    else CHECK(debug_snapshot().state==State::LOW_POWER);
+    CHECK(test_servo_writes==0 && test_output[3]==LOW && test_pwm[11]==0);
+    EEPROM.after_put=nullptr;
+  }
+
+  CASE("partial profile write fails readback and preserves other slots");
+  boot();Profile candidate=default_profile(0);candidate.entry_x=-70.8f;candidate.end_x=61;
+  CHECK(validate_profile(candidate));
+  unsigned char other_slots[120];std::memcpy(other_slots,EEPROM.bytes+40,120);
+  EEPROM.bytes_per_write=20;
+  CHECK(!save_profile(candidate,0));
+  CHECK(std::memcmp(other_slots,EEPROM.bytes+40,120)==0);
+  EEPROM.bytes_per_write=-1;
+  // This plausible mixture may load: unchanged legacy layout has no checksum.
+  Profile mixed;CHECK(load_profile(0,mixed));
+  CHECK(std::memcmp(&mixed,&candidate,sizeof(Profile))!=0);
+
+  CASE("calibration failed save holds with storage fault");
+  boot();CHECK(await(State::WAIT));click(7,1100);
+  // Move to an interior point; repeated points are numerically valid. This is
+  // a storage test fixture, never a suggested physical bowl calibration.
+  for(uint32_t ms=0;ms<30000 && debug_snapshot().target_x<0;ms+=20) {
+    test_analog[2]=312;run(20);
+  }
+  test_analog[2]=512;run(40);
+  CHECK(debug_snapshot().state==State::CALIBRATE);
+  std::memcpy(other_slots,EEPROM.bytes+40,120);
+  unsigned char original_slot[40];std::memcpy(original_slot,EEPROM.bytes,40);
+  EEPROM.drop_writes=true;
+  for(int point=0;point<5;++point) {click(7);run(250);}
+  CHECK(debug_snapshot().fault==Fault::STORAGE && test_pwm[11]==0);
+  CHECK(std::memcmp(original_slot,EEPROM.bytes,40)==0);
+  CHECK(std::memcmp(other_slots,EEPROM.bytes+40,120)==0);
   EEPROM.drop_writes=false;
 
   std::printf("review regressions: %d scenarios, %d assertion checks, %d failures\n",scenarios,checks,failures);

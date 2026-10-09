@@ -24,8 +24,10 @@ jobs:
         run: ./tests/run_tests.sh
       - name: ASan and UBSan
         run: SANITIZE=1 ./tests/run_tests.sh
-      - name: Whitespace since reviewed starting revision
-        run: git -c safe.directory="$GITHUB_WORKSPACE" diff --check 3fa818db2e62f5d08bb78fadfa861dc6b18c0f4f HEAD
+      - name: Repository checks
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          ./tools/check_repository.sh
 
   uno:
     runs-on: ubuntu-24.04
