@@ -61,6 +61,14 @@ bool Motion::begin_cart(float a,float b,float x,float y,float speed,uint32_t now
   if (!valid_cartesian_angles(a,b) || !calc_fk(a,b,x_,y_) ||
       !checked_ik(x,y,ta,tb) || !valid_cartesian_angles(ta,tb)) return false;
   cart_=true;a_=a;b_=b;dx_=x-x_;dy_=y-y_;speed_=speed;
+  // Valid endpoint joints do not prove that the chord stays outside the
+  // inherited inner workspace. Check its closest point analytically so a
+  // narrow crossing cannot hide between the preflight samples below.
+  const float length2=dx_*dx_+dy_*dy_;
+  float closest=length2>0 ? -(x_*dx_+y_*dy_)/length2 : 0;
+  closest=fmaxf(0,fminf(1,closest));
+  if(hypotf(x_+dx_*closest,y_+dy_*closest)<Config::WORKSPACE_MIN_RADIUS-0.001f)
+    return false; // Same 0.001 mm numerical tolerance as project_workspace.
   // Preflight the actual straight path. Estimate derivatives to set a slow
   // common clock; live stepping checks each candidate's joint rate/acceleration.
   const uint8_t samples=24;

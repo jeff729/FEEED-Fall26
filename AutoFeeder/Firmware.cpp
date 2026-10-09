@@ -29,6 +29,7 @@ bool loaded_valid[NUM_PROFILES]={};
 CalibrationPoint calibration_point=CalibrationPoint::ENTRY;
 Profile profile,calibration_profile;
 uint8_t calibration_slot=0;
+bool safety_tick(uint32_t now,bool force);
 #if ENABLE_PLATE_JIGGLE
 uint8_t jiggle_phase=0;
 uint32_t jiggle_timestamp=0;
@@ -193,6 +194,9 @@ void start_scoop_segment() {
 }
 void start_startup() {
   clear_fault();enter(State::STARTUP);
+  // EEPROM writes can take time. Re-sample before any recovery command or
+  // power enable, including a reset that began with acceptable readings.
+  if(!safety_tick(uint32_t(millis()),true))return;
   digitalWrite(SERVO_POWER_PWM,LOW);
   if (write_servos(STARTUP_Q1,STARTUP_Q2))digitalWrite(SERVO_POWER_PWM,HIGH);
 }
@@ -272,7 +276,10 @@ bool safety_tick(uint32_t now,bool force=false) {
   if (battery_adc<LOW_POWER_VOLTAGE) {
     enter(State::LOW_POWER);digitalWrite(SERVO_POWER_PWM,LOW);return false;
   }
-  if (state!=State::FAULT && servo_current>OVERLOAD_CURRENT) {set_fault(Fault::OVERLOAD);return false;}
+  if (servo_current>OVERLOAD_CURRENT &&
+      (state!=State::FAULT || fault==Fault::PROFILE_INVALID || fault==Fault::STORAGE)) {
+    set_fault(Fault::OVERLOAD);return false;
+  }
   return state!=State::FAULT;
 }
 void update_led(uint32_t now) {

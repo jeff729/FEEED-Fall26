@@ -56,7 +56,7 @@ int main() {
 
   for(int adc : {399,400,401,500,501}) {
     CASE("current threshold boundary in scoop");
-    boot();CHECK(await(State::WAIT));click(2);CHECK(await(State::SCOOP));
+    boot();CHECK(await(State::WAIT));click(2);CHECK(await(State::SCOOP));run(5000);
     int writes=test_servo_writes;test_analog[0]=adc;run(10);
     if(adc<=400)CHECK(debug_snapshot().state==State::SCOOP && debug_snapshot().retries==0);
     else if(adc<=500)CHECK(debug_snapshot().state==State::CONTACT_BACKOFF && debug_snapshot().retries==1);
