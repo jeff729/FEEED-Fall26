@@ -1,14 +1,14 @@
 # Fall 2026 state responsibilities
 
 Firmware.cpp owns the state; Control.cpp owns the active command trajectory.
-Every `enter()` first stops the plate and discards the previous trajectory.
+Every `enter()` first stops plate PWM and discards the previous trajectory.
 No queued ordinary transition can override a safety transition. Every loop
 debounces inputs, polls the profile knob, samples battery/current on a 10 ms
 elapsed schedule, and updates the LED before normal state work. LOW_POWER
 and FAULT bypass normal state work. Servo commands are transactional, finite,
 within inherited joint/pulse limits, and derived from current valid targets.
 
-| State | Entry / active responsibility | Exit | Plate |
+| State | Entry / active responsibility | Exit | Plate command |
 |---|---|---|---|
 | STARTUP | Inherited initial command with supply disabled, enable supply; nonblocking 500 ms settle; then joystick centre sampling | STARTUP_LIFT | Stopped |
 | STARTUP_LIFT | Eased synchronized move to inherited straight pose (0,0) | RETURN automatically | Stopped |
@@ -53,3 +53,15 @@ its current commanded height rather than taking a downward joint-space dip.
 They cannot verify actual bowl shape, clearance, mechanical lag or contact
 force. A route can fail safely at the shoulder stop. Use the physical test
 guide before energizing and before any person-delivery trial.
+
+October 9 review: overload also takes priority over recoverable profile/storage
+faults. Reset recovery samples current/voltage again after EEPROM writes and
+before startup commands or power enable. Low voltage retains highest priority.
+Cartesian path preflight checks the closest point of the full chord against
+the existing 10 mm inner radius; failed paths latch KINEMATICS without a stale
+trajectory. This does not continuously prove clearance from an unknown bowl.
+
+The acceleration guard belongs to planned Motion segments. Manual calibration
+is velocity-limited only, and immediate cancel/contact/fault interruptions do
+not guarantee continuous acceleration. Simultaneous short-button releases at
+WAIT use the main-button branch once; they do not queue a second cycle.

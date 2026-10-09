@@ -37,7 +37,7 @@ validated by these host tests.
 | DELIVERY_SPEED | 0.225 rad/s | Startup's inherited lift to straight pose |
 | RETURN_SPEED | 0.3 rad/s | Delivery return waypoint and user-cancel clearance |
 | CALIBRATION_SPEED | 0.3 rad/s | Joystick joint-rate cap, including near singularities |
-| JOINT_ACCELERATION | 0.6 rad/s² | Common joint acceleration bound; Cartesian duration estimates derivatives, and live candidates must pass this bound before publication |
+| JOINT_ACCELERATION | 0.6 rad/s² | Planned Motion segments only; manual joystick commands and immediate stops are excluded |
 | JOINT_ACCELERATION_ROUNDOFF | 0.002 rad/s² | Numerical tolerance for the live command check; not additional physical acceleration allowance |
 | CARTESIAN_SINGULARITY_ANGLE | 0.05 rad | Reject Cartesian paths within this distance of elbow 0 or pi; numerical planner guard, not a change to physical joint travel |
 | RETURN_START_FRACTION | 0.25 | Initial fraction of inherited joint return route to leave straight-arm singularity; sampled clearance checked before movement |
@@ -64,10 +64,14 @@ intentionally capped at normal approach speed rather than retaining the
 old unexplained 4x multiplier. Measure cycle time, loaded movement and spoon
 bounce before changing rates. Speed and acceleration must be positive;
 timing intervals must remain small relative to the uint32 clock range.
-Quintic segments stop gently at each calibrated corner. No splines round
-unknown bowl walls. Every published trajectory candidate passes hard joint
-velocity and discrete acceleration checks. A rejected candidate never reaches
-the servo command; the feeder holds and faults. Near a straight/folded elbow,
+Planned quintic segments reach zero nominal velocity at each calibrated
+corner. No splines round unknown bowl walls. Each planned Motion candidate
+passes joint velocity and nominal 20 ms
+discrete acceleration checks. Manual calibration is velocity-limited only;
+joystick starts/reversals do not obey JOINT_ACCELERATION. Startup pose writes,
+cancel/contact interruptions and fault stops also have no continuous
+acceleration guarantee. Do not treat these settings as measured servo limits.
+A rejected candidate never reaches the servo command; the feeder holds and faults. Near a straight/folded elbow,
 Cartesian profiles/paths are rejected before movement because IK derivatives
 become singular. Joint-space movement still supports the inherited full range,
 including the straight delivery pose. Returning from that pose follows a
@@ -81,14 +85,13 @@ Normal current continues the current segment. Above 400, the arm stops
 advancing that segment, tries a validated 1 mm upward backoff, pauses,
 and retries the same segment with the accumulated offset. Three total
 retries / 3 mm are the initial bounds. Above 500, invalid IK, invalid
-paths, or exhausted contact recovery latches FAULT and stops the plate.
+paths, or exhausted contact recovery latch FAULT and stop plate PWM.
 The last valid servo command is held; overload does not trigger a blind
 retract against an obstruction. User cancellation attempts a validated
 vertical clearance then home without delivery. If already above clearance,
 cancellation traverses horizontally at the current commanded height before
 home instead of dipping down to a lower return waypoint. At the shoulder stop
-the
-vertical clearance is limited by existing link geometry; a joint home
+the vertical clearance is limited by existing link geometry; a joint home
 fallback is checked for a downward dip. If no valid commanded path exists,
 the firmware holds and signals a fault instead of inventing a route.
 
@@ -100,12 +103,17 @@ validation, not proof that the utensil is safe around a person.
 ## Profiles and calibration
 
 Four raw ten-float profiles stay at EEPROM offsets 0,40,80,120. No format
-migration, checksum or automatic writes on boot. All five points and
-derived exit/return points are validated, including Cartesian conditioning.
+migration, checksum or automatic writes on boot. All five points and derived
+exit/return points are validated, including
+Cartesian conditioning. Actual segments are preflighted before execution;
+point-valid saved profiles can still fail a segment and latch KINEMATICS.
+Cartesian chords now analytically check their closest approach to the
+inherited 10 mm inner radius, in addition to sampled IK and live command checks.
+Such path rejection does not erase or rewrite the saved profile.
 Do not loosen the singularity guard to accept a rejected near-straight profile;
 calibrate a supported path within the unchanged physical limits. The exact
-inherited built-in
-bowl template is recognized and receives the old entry projection in RAM:
+inherited built-in bowl template is recognized and receives the old entry
+projection in RAM:
 (-75,-82.5) -> (-70.99926,-95.70244). Other substantially invalid points
 are rejected. A bad slot gets its default in RAM, but selecting it for a
 cycle signals a fault. Other EEPROM slots remain unchanged. Confirmed
@@ -130,7 +138,11 @@ Advanced (D1 HIGH): quick main/joystick press-release starts one scoop.
 Main hold >=500 ms rotates the plate; raw release immediately stops PWM,
 then settles and waits. Release after a long hold never scoops. Changing
 the mode switch to Simple also stops manual rotation.
-Simple (D1 LOW): one press-release rotates for 600 ms, stops, settles
+
+**Caregiver/supervisor review required:** the inherited 6500 ms Simple eating
+timeout is unchanged. Review it before any use with a person.
+
+Simple (D1 LOW): one press-release rotates for 600 ms, stops PWM, settles
 400 ms, scoops, delivers, waits 6500 ms and returns. Held input never
 repeats cycles. Idle re-arms only after both raw and debounced release;
 a raw press begun just before reaching idle is consumed. A new press during
@@ -145,12 +157,21 @@ and disables the servo supply. Inspect overload/kinematic/contact faults
 before a power cycle; there is no automatic restart. Invalid-profile/storage
 faults permit the inherited explicit >=10-second joystick reset gesture;
 that deliberate gesture resets **all four slots**, never automatically.
+Overload takes priority over these recoverable faults and blocks reset
+recovery; current/voltage are sampled again after reset writes before any
+startup command or power enable. EEPROM writes themselves are synchronous,
+so their physical duration and worst-case safety sampling latency need bench
+measurement. A partial reset can update earlier slots before a later write
+fails; no all-slot transaction or power-loss atomicity is claimed.
 
 ## Plate experiments and debug
 
 USE_PLATE_BRAKE=false. Repository evidence identifies a brake pin but not
 a verified controller model/current/thermal response. Keep it disabled
-until tested. Direction changes first command zero PWM.
+until tested. Direction changes first command zero PWM. This does not
+establish physical stop time; the plate can coast. Current-based recovery uses A0 as a bounded
+heuristic, not measured contact-force control. A1 is only a documented plate
+current connection; its wiring/calibration are unconfirmed and unused.
 
 ENABLE_PLATE_JIGGLE=0 and RUN_PLATE_JIGGLE_ONCE_AT_HOME=0 by default.
 With the former enabled, `start_plate_jiggle()` only accepts an idle,

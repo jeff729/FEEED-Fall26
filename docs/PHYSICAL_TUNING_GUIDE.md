@@ -1,6 +1,7 @@
 # Physical tuning of the existing feeder
 
-Use the existing hardware only. No autonomous upload has been performed.
+Use the existing hardware only. Physical testing remains pending.
+No firmware upload has been performed.
 Begin with no person in utensil reach, no food, a clear mechanism, and
 ready access to the existing power disconnect. The software button is a
 cancel request, not an independent emergency power cutoff. Verify the
@@ -12,7 +13,9 @@ energizing; do not swap wires or pin numbers to fit the old documentation.
 1. Build the default Uno configuration and review Config.h/Pinout.txt.
    Check the current thresholds remain 400/500 and cutoff 662 ADC. Keep
    brake, jiggle, UART and rotating calibration disabled. Only manually
-   upload when the lab operator has cleared the mechanism.
+   upload after the lab operator explicitly approves the upload and clears
+   the mechanism. Verify the existing sensing/power wires; A1 plate-current
+   wiring and calibration are unconfirmed and firmware does not use it.
 2. Keep the utensil unloaded and observe startup snap, inherited lift,
    staged return from straight delivery, return waypoint and home. Keep
    joystick neutral during startup. Stop
@@ -30,13 +33,15 @@ energizing; do not swap wires or pin numbers to fit the old documentation.
    plate-only rotation, raw release stop, and a short joystick shortcut.
    Check cancel during descend, near the bottom, during lift, and early
    return at delivery. Check a held cancel does not restart at home. Presses
-   begun immediately
-   before idle must also be consumed; release and press again intentionally.
+   begun immediately before idle must also be consumed; release and press
+   again intentionally.
 6. Run empty-bowl scoops. Check corner slowing, clearance and return. Use
    only a calibrated path; a valid numerical profile is not evidence of
    no physical collision. Stop if the spoon scrapes or the linkage stalls.
 7. In Simple mode, verify rotate -> PWM stop -> settle -> scoop -> lift ->
    6.5-second wait -> home. Check one cycle per release and early return.
+   This inherited timeout is unchanged; caregiver/supervisor review is
+   required before use with a person.
 8. Record current/voltage with appropriate lab equipment already available.
    Do not deliberately stall against the bowl/person to provoke overload.
    Simulated ADC tests already exercise shutdown logic; physical fault
@@ -62,7 +67,7 @@ the same bowl/food/profile trial and record the result.
 | 4 LIFT_SPEED, DELIVERY_SPEED | Exit/approach to delivery | Spill, slosh, spoon bounce | Food loss from drips, long delivery | Food held through lift, endpoint settling; DELIVERY_SPEED currently controls startup lift |
 | 5 RETURN_SPEED | Return waypoint/retract | Spill of residue, abrupt retreat | Long cycle, time near user's face | Clearance at every segment and stable home |
 | 6 PLATE_PWM, PLATE_START_PWM | Existing bowl motor command | Fast bowl motion, food displacement, high motor current | Motor fails to start, inconsistent rotation | Loaded/unloaded start reliability and current; preserve direction/pins |
-| 7 AUTO_ROTATE_DURATION, PLATE_RAMP_TIME, PLATE_SETTLE_TIME | Rotation exposure and coast settle | Excess rotation/long pause; too-short ramp can shock | Repeated sampling of same region; short settle leaves moving bowl | Actual angle per cycle at different loads/charge; motor stopped before spoon descend |
+| 7 AUTO_ROTATE_DURATION, PLATE_RAMP_TIME, PLATE_SETTLE_TIME | Rotation exposure and coast settle | Excess rotation/long pause; too-short ramp can shock | Repeated sampling of same region; short settle leaves moving bowl | Actual angle per cycle at different loads/charge; measure physical coast stop before descent |
 | 8 THRESHOLD_CURRENT, OVERLOAD_CURRENT | Contact/abort thresholds | Excess bowl force, late protection | False retries or false aborts | Baseline, loaded, gentle contact and safe overload ADC distributions; retain 400/500 until measured |
 | 9 CONTACT_OFFSET_MM, MAX_CONTACT_OFFSET_MM, MAX_CONTACT_RETRIES, CONTACT_SETTLE_MS | Bounded pressure relief | Empty spoon from shallow path, many repeated contacts, long recovery | Insufficient relief, frequent bounded aborts | Offset that actually reduces measured contact; retry count; safe clearance and no oscillation |
 | 10 FEED_WAIT_TIME | Simple delivery hold | Long time at face, slow meal | Retreat before user finishes | User/operator observed eating time only after safe physical validation |
@@ -102,3 +107,20 @@ cancel and exit. Return both lab flags to 0 before normal feeding tests.
 Measure current-to-force correlation and actual commanded/achieved tracking
 before claiming contact-force regulation. There are no encoders or new
 sensors: contact recovery is bounded heuristic relief, not force control.
+
+## Limits to observe explicitly
+
+Planned Motion segments enforce nominal command velocity/acceleration bounds.
+Manual joystick calibration limits velocity only. Observe starts, reversals
+and releases separately; cancel/contact/fault stops can interrupt a moving
+trajectory without a smooth deceleration. Startup can snap. Holding a servo
+command during a fault can sustain load, while disabling power can allow the
+arm to fall; assess both consequences with the unloaded mechanism supported
+as appropriate. Neither policy has been mechanically validated here.
+
+Use the software timing table in VERIFICATION_REPORT.md to plan the session.
+It assumes ideal commanded positions and a regular 10 ms loop; it does not
+predict loaded servo response. Record actual phase durations, unexpected
+pauses, faults and operator interventions. Keep 400/500/662 ADC thresholds
+and all physical configuration unchanged until measured evidence and team
+review justify a separate change. Do not deliberately jam the mechanism.

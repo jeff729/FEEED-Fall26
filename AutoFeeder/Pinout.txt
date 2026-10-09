@@ -1,4 +1,4 @@
-F.E.E.E.D. Fall 2026 — Arduino Uno, unchanged SOURCE pin assignments
+F.E.E.E.D. Fall 2026 - Arduino Uno, unchanged SOURCE pin assignments
 
 D0: RX unused; do not enable UART with current D1 wiring
 D1: Mode-select switch INPUT_PULLUP (HIGH Advanced, LOW Simple)
@@ -16,7 +16,7 @@ D12: Motor channel A servo supply direction, held HIGH
 D13: Motor channel B plate direction (normal direction LOW)
 
 A0: Existing servo current sense
-A1: Existing plate current sense, not sampled by control logic (no measured cutoff)
+A1: Documented plate current sense; wiring/calibration unconfirmed, not sampled
 A2: Joystick X, inverted in source
 A3: Joystick Y
 A4: Servo supply/battery voltage sense

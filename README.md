@@ -1,110 +1,84 @@
-# F.E.E.E.D. — Fall 2026 existing-hardware firmware
+# F.E.E.E.D. - UMD Fall 2026
 
-UMD's assistive feeder uses its existing two-servo spoon arm, DC plate motor,
-main button, joystick/button, four-profile potentiometer, mode switch and LED.
-This branch improves the existing Arduino Uno software. It adds no hardware,
-changes no pin assignments and does not add vision, networking or a companion
-computer. `main` remains the original file-import baseline; work is on
-`fall26-development`.
+**Experimental firmware. Software verification does not establish
+physical feeding performance or suitability for use with a person.**
 
-## Build and software checks
+This assistive feeder uses the existing Arduino Uno, two-servo spoon arm,
+time-based DC plate motor, controls and power system. Current work is on
+[`fall26-development`](https://github.com/jeff729/FEEED-Fall26/tree/fall26-development).
+`main` remains the inherited file-import baseline. No new hardware is added.
 
-Arduino CLI 1.5.1, AVR core 1.8.8 and Servo 1.2.2 were used for verification.
-Install with your package manager or the official CLI installer, then:
+## Build and test
+
+Use Arduino CLI **1.5.1**, AVR core **1.8.8**, Servo **1.2.2**, and board
+`arduino:avr:uno`. Host CI uses GCC **14.2.0** in a digest-pinned official GCC
+container on Ubuntu 24.04; action commit references are pinned in
+[the workflow](.github/workflows/verify.yml).
 
 ```sh
 arduino-cli core update-index
 arduino-cli core install arduino:avr@1.8.8
 arduino-cli lib install Servo@1.2.2
-./tools/compile_uno.sh
 ./tests/run_tests.sh
 SANITIZE=1 ./tests/run_tests.sh
+./tools/compile_uno.sh
+./tools/check_uno.sh experimental
+./tools/check_uno.sh uart-rejection
+./tools/check_repository.sh
 ```
 
-See [Arduino CLI setup](https://docs.arduino.cc/arduino-cli/getting-started/).
-The scripts build in temporary directories and never upload firmware or
-select a physical port. For manual IDE builds, open `AutoFeeder/AutoFeeder.ino`
-and select Arduino Uno. Keep the entire AutoFeeder folder together.
+Use a POSIX shell and C++11 compiler. The scripts use temporary build paths
+and never detect ports or upload. Git Bash works for local Uno compilation.
+This Windows review environment has no WSL; Application Control blocked its
+portable host linker, so host/sanitizer results come from Linux GitHub Actions.
+See the [verification report](docs/VERIFICATION_REPORT.md) for exact revisions,
+results, warnings, simulated phase times and local blockers. Software checks
+include default and experimental builds; experimental firmware is not the
+normal bench configuration. October 9 verification passed 6,652 host
+assertions in normal/sanitizer runs and both Uno builds; physical testing
+remains pending.
 
-## Existing connections
+## What changed
 
-`AutoFeeder/Config.h` is the authoritative unchanged pin/tuning reference.
-D1 is the mode switch, D2 main button, D5/D6 the two servo signals, D7 the
-joystick button, D10 LED, and D8/D11/D13 plate brake/PWM/direction. D3/D12
-control existing servo supply enable/polarity. A0 is servo current, A1
-is the existing unused plate-current input, A2/A3 are joystick X/Y, A4
-is battery voltage and A5 is profile selection.
+The earlier Fall 2026 work added checked kinematics/profiles, synchronized timed
+motion, debounced controls, bounded current-based recovery, locked cycle/profile
+selection, validated cancellation, LED calibration feedback and save readback.
+This completion pass fixes overload priority during profile-reset recovery and
+Cartesian paths crossing the existing inner workspace, and adds CI, focused
+regressions and phase timing. See [CHANGELOG.md](CHANGELOG.md).
 
-**Old documentation assigned the analog pins differently.** This branch
-preserves the actual source assignments, not the obsolete A2 voltage /
-A3,A4 joystick table. Do not rewire the feeder to fit old documentation.
-Verify existing wiring in the lab. Hardware UART TX conflicts with D1;
-Serial remains disabled. [Pinout.txt](AutoFeeder/Pinout.txt) lists every pin.
+## Before the first bench session
 
-## Operation
+- Use [Pinout.txt](AutoFeeder/Pinout.txt) and [Config.h](AutoFeeder/Config.h).
+  The source uses A2/A3 for joystick and A4 for voltage; old wiring tables
+  conflict. Verify existing wires in the lab. A1 plate-current wiring and
+  calibration remain unconfirmed; no protection uses it. D1 is the mode
+  switch, so UART must stay disabled.
+- Follow the [movement checklist](docs/MOVEMENT_TEST_CHECKLIST.md) and
+  [physical tuning guide](docs/PHYSICAL_TUNING_GUIDE.md), with people outside
+  utensil reach. Upload manually only after operator approval.
+- Read [controls, settings and fault codes](docs/TUNING_GUIDE.md) and the
+  [current state machine](docs/FIRMWARE_STATE_MACHINE.md). The inherited Simple
+  eating timeout remains **6500 ms** and needs caregiver/supervisor review
+  before any use with a person.
+- Physical testing is pending. Commanded joint positions are not feedback;
+  PWM zero is not proof that the plate has stopped coasting. Startup snap,
+  bowl clearance, tracking under load, ADC calibration and fault hold versus
+  power-off consequences still require supervised measurement. Keep braking,
+  jiggle, one-shot boot experiments, rotating calibration and UART disabled.
 
-Start with a neutral joystick and clear the utensil path. The inherited
-startup pose can snap because there is no position feedback. The arm lifts
-through its inherited startup path, then automatically returns home.
+## Provenance and course report
 
-- **Advanced / HIGH mode switch:** quick main press-release scoops; main
-  hold >=500 ms rotates the plate while held. Release stops PWM immediately,
-  then settles. A long press never starts a scoop. At delivery, press to return.
-- **Simple / LOW mode switch:** one press-release rotates for 600 ms,
-  stops, settles for 400 ms, scoops, delivers, waits 6500 ms and returns.
-- A short joystick press-release retains the scoop shortcut. New presses
-  during approach, scoop or lift request a clearance retract and home.
-  A held press does not repeatedly start cycles. Starting mode/profile
-  remain fixed throughout a cycle.
-- **Calibration:** joystick hold-release between 1 and 10 seconds enters
-  ENTRY, BOTTOM, MIDDLE, FRONT, END. Move with joystick; short release confirms.
-  LED counts identify the next point; no physical confirmation nod. Plate
-  stays stopped by default. Long joystick hold or main press cancels.
-  The save slot is locked when calibration starts; other slots are unchanged.
-- **Explicit reset:** >=10-second joystick hold-release resets all four
-  EEPROM profiles. Invalid data never automatically resets other profiles.
-- **Low power:** plate stops, servo supply turns off and LED blinks 500 ms
-  on/off; power-cycle recovery only.
-- **Fault LED counts:** 1 kinematics, 2 profile, 3 overload, 4 contact limit,
-  5 storage. Stop and inspect; movement holds its last valid command rather
-  than driving against a suspected obstruction. Six calibration flashes
-  reject invalid completion without saving.
+This continuation credits the prior UMD F.E.E.E.D. teams and
+[original project](https://github.com/Ibrahimtourepe/F.E.E.E.D.). This repository
+begins with a file import, not preserved upstream commit history. The
+[inherited architecture document](docs/CURRENT_FIRMWARE_ARCHITECTURE.md)
+describes that baseline, including its defects; it is not current operating
+instructions. No project license was found in this repository or the original
+repository metadata. Public visibility does not supply a reuse license; none
+has been added.
 
-The five-point EEPROM layout, link lengths, pulses, joint limits and raw
-current/battery thresholds are preserved. Bounded contact recovery raises
-by 1 mm per retry, at most 3 retries / 3 mm. Motion uses timed, synchronized,
-velocity-limited easing through existing points. Initial rad/s speeds need
-lab measurements: the old speed was expressed per loop, with no stable timebase.
-Software checks cannot establish physical food retention or face safety.
-
-## Project guides
-
-- [Inherited firmware architecture](docs/CURRENT_FIRMWARE_ARCHITECTURE.md)
-- [Implementation plan and decisions](docs/FALL26_IMPLEMENTATION_PLAN.md)
-- [All tuning parameters and fault behavior](docs/TUNING_GUIDE.md)
-- [Exact first physical test and tuning sequence](docs/PHYSICAL_TUNING_GUIDE.md)
-- [Movement and food trial checklist](docs/MOVEMENT_TEST_CHECKLIST.md)
-- [Software verification and remaining lab work](docs/VERIFICATION_REPORT.md)
-
-Normal feeding excludes jiggle and braking. For an explicitly cleared lab
-experiment only, build with:
-
-```sh
-./tools/compile_uno.sh --build-property \
-  'compiler.cpp.extra_flags=-DENABLE_PLATE_JIGGLE=1 -DRUN_PLATE_JIGGLE_ONCE_AT_HOME=1'
-```
-
-That lab build runs one forward/pause/reverse/pause experiment on first home;
-restore both flags to 0 for normal operation. An optional existing-D4 scope
-trace is available with ENABLE_DEBUG_PIN_TRACE=1. `debug_snapshot()` exposes
-values to the host harness. UART telemetry intentionally cannot be enabled
-with the current D1 wiring.
-
-## Source layout
-
-`AutoFeeder.ino` wraps setup/loop; `Firmware.cpp` owns the explicit states,
-inputs, safety and calibration; `Control.cpp` supplies pure debounce/motion/
-retry logic; `kinematics.cpp` validates geometry; `Profile.cpp` validates and
-reads/writes the unchanged EEPROM structs. `DCMotor.cpp` and `Joystick.cpp`
-use only existing pins. `tests/` provides a lightweight C++ harness with
-simulated Arduino I/O. No simulator result is a physical hardware trial.
+[PR4 software update](docs/progress/PR4_SOFTWARE_UPDATE.md) contains the two
+course-progress slides for October 3-9, 2026. Implementation and documentation
+in this pass were prepared with AI assistance; human team review and physical
+testing remain pending.

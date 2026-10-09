@@ -159,3 +159,18 @@ The reviewer could not validate physical tracking, contact force, bowl shape,
 ADC calibration, controller reverse/brake behavior, actual AVR timing/stack
 headroom or plausible interrupted EEPROM writes. Those remain lab validation
 items, not software safety claims. No second independent review is claimed.
+
+## October 9 verification ledger
+
+- Initial firmware reproduced the previous 6,577 assertions in pinned Linux
+  CI (`ec2b71f`), after local host linking was blocked by Application Control.
+- Regression-only `d8f24d7` reproduced reset-overload and inner-radius path
+  failures. `f06cc9a` fixed both; all Config.h constants remain unchanged.
+- `6cab55d` passes host/sanitizers with 6,652 assertions, 21 focused scenario
+  executions, 18 invariant groups, six joint-boundary predicates and eight
+  complete phase-timing simulations. Default/lab Uno builds and UART guard pass.
+- Independent AI-assisted read-only review found no further material issue
+  in those fixes, tests or CI. It is not human approval or hardware validation.
+- Existing guides and PR4 slides are updated without changing the inherited
+  architecture record. Publication review found no sensitive-content blocker;
+  no license is added. See VERIFICATION_REPORT.md for scope and final status.

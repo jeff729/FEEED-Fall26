@@ -13,3 +13,9 @@ See [tuning](../docs/TUNING_GUIDE.md),
 [first physical tests](../docs/PHYSICAL_TUNING_GUIDE.md), and
 [movement checklist](../docs/MOVEMENT_TEST_CHECKLIST.md) before running a feeder.
 Main is the untouched file-import baseline. Development uses fall26-development.
+
+Experimental firmware; physical testing is pending. The pin table is derived
+from source, not physically verified. A1 plate-current wiring/calibration is
+unconfirmed. The Simple-mode 6500 ms eating timeout is unchanged and requires
+caregiver/supervisor review before use with a person. The root verification
+report records current test results and the local host-compiler blocker.
