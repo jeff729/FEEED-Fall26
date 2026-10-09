@@ -1,5 +1,32 @@
 # Existing-hardware firmware reliability plan
 
+## October 9 completion pass
+
+Starting development revision: 3fa818db2e62f5d08bb78fadfa861dc6b18c0f4f.
+Imported main: c9ea8ac4f724e141cdb5ad1593cc350be78e9a39.
+The earlier execution ledger below records October 6 work, not new work.
+
+1. Inspect the existing source/guides and run the original scripts before
+   firmware edits. Preserve all Config.h hardware constants and EEPROM layout.
+2. Add pinned CI using the same host/Uno scripts. Local Git Bash Uno build
+   passed; host and sanitizer attempts are blocked by Windows Application
+   Control rejecting the portable compiler linker (0x11C7). Run the unchanged
+   firmware in hosted Linux CI before fixes; do not bypass the local policy.
+3. Reproduce confirmed defects in the lightweight harness, then fix only
+   their causes. Review fault-reset priority, full-path workspace checks,
+   input boundary behavior, storage failure and commanded movement timing.
+4. Add deterministic missing regressions, hardware invariants and simulated
+   default-profile phase timing. Distinguish checks from scenarios and
+   software simulation from physical measurements.
+5. Reconcile existing guides, verification evidence, changelog and PR4 slides.
+6. Review both branches, tags, reachable history and GitHub publication
+   surfaces. If clear, push logical commits only to origin/fall26-development
+   and publish the repository as explicitly requested. Verify exact-commit CI,
+   remote refs, unchanged main, visibility and anonymous access. Never upload.
+
+This pass follows the user's detailed execution scope directly; it does not
+require another approval gate, worktree, rewrite or GitHub pull request.
+
 Goal: preserve the current Uno, pins, two-link geometry, five-point EEPROM
 format, thresholds, physical joint limits and recognizable Simple/Advanced
 interface while implementing the user's P0..P5 requirements on

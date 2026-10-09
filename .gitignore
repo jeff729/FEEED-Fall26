@@ -1,0 +1,8 @@
+# Build products belong in temporary directories, never in source history.
+*.o
+*.elf
+*.hex
+*.bin
+*.exe
+.build/
+__pycache__/

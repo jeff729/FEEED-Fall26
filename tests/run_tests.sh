@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 test_build=$(mktemp -d "${TMPDIR:-/tmp}/feeder-tests.XXXXXX")
 trap 'rm -rf "$test_build"' EXIT HUP INT TERM
 if [ "${SANITIZE:-0}" = 1 ]; then
-  export CXXFLAGS="${CXXFLAGS:-} -fsanitize=address,undefined -fno-omit-frame-pointer"
+  export CXXFLAGS="${CXXFLAGS:-} -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer"
 fi
 ${CXX:-c++} ${CXXFLAGS:-} -std=c++11 -Wall -Wextra -Werror -Itests/stubs -IAutoFeeder \
   tests/test_kinematics.cpp AutoFeeder/kinematics.cpp AutoFeeder/Profile.cpp \
